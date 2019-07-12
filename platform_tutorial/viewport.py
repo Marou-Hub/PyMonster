@@ -74,3 +74,7 @@ class Viewport:
                                 SCREEN_WIDTH + self.view_left,
                                 self.view_bottom,
                                 SCREEN_HEIGHT + self.view_bottom)
+
+    def reset(self):
+        self.view_left = 0
+        self.view_bottom = 0

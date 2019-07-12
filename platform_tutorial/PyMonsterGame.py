@@ -55,6 +55,7 @@ class MyGame(arcade.Window):
 
         # Where is the right edge of the map?
         self.end_of_map = 0
+        self.level = 1
 
         # Load sounds
         self.collect_coin_sound = arcade.load_sound("sounds/coin1.wav")
@@ -195,6 +196,33 @@ class MyGame(arcade.Window):
             arcade.play_sound(self.collect_coin_sound)
             # Add one to the score
             self.score += 1
+
+        # Did the player fall off the map?
+        if self.player.center_y < -100:
+            self.player.reset()
+
+            # Set the camera to the start
+            self.viewport.reset()
+            arcade.play_sound(self.game_over)
+                
+        # Did the player touch something they should not?
+        if arcade.check_for_collision_with_list(self.player, self.dont_touch_list):
+            self.player.reset()
+
+            # Set the camera to the start
+            arcade.play_sound(self.game_over)
+            self.viewport.reset()
+
+        # See if the user got to the end of the level
+        if self.player.center_x >= self.end_of_map:
+            # Advance to the next level
+            self.level += 1
+
+            # Load the next level
+            self.setup()
+
+            # Set the camera to the start
+            self.viewport.reset()
 
         # --- Manage Scrolling ---
         self.viewport.update(self.player.left, self.player.right, self.player.top, self.player.bottom)
