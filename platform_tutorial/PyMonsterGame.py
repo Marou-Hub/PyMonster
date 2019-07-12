@@ -4,10 +4,10 @@ Platformer Game
 import arcade
 
 # Constants
+from platform_tutorial.constants import SCREEN_WIDTH, SCREEN_HEIGHT
+from platform_tutorial.viewport import Viewport
 from platform_tutorial.player import Player
 
-SCREEN_WIDTH = 1000
-SCREEN_HEIGHT = 650
 SCREEN_TITLE = "Platformer"
 
 # Constants used to scale our sprites from their original size
@@ -20,13 +20,6 @@ GRID_PIXEL_SIZE = (SPRITE_PIXEL_SIZE * TILE_SCALING)
 PLAYER_MOVEMENT_SPEED = 5
 GRAVITY = 1
 PLAYER_JUMP_SPEED = 20
-
-# How many pixels to keep as a minimum margin between the character
-# and the edge of the screen.
-LEFT_VIEWPORT_MARGIN = 150
-RIGHT_VIEWPORT_MARGIN = 150
-BOTTOM_VIEWPORT_MARGIN = 100
-TOP_VIEWPORT_MARGIN = 100
 
 
 class MyGame(arcade.Window):
@@ -55,8 +48,7 @@ class MyGame(arcade.Window):
         self.physics_engine = None
 
         # Used to keep track of our scrolling
-        self.view_bottom = 0
-        self.view_left = 0
+        self.viewport = None
 
         # Keep track of the score
         self.score = 0
@@ -75,8 +67,7 @@ class MyGame(arcade.Window):
         """ Set up the game here. Call this function to restart the game. """
 
         # Used to keep track of our scrolling
-        self.view_bottom = 0
-        self.view_left = 0
+        self.viewport = Viewport()
 
         # Keep track of the score
         self.score = 0
@@ -163,8 +154,7 @@ class MyGame(arcade.Window):
 
         # Draw our score on the screen, scrolling it with the viewport
         score_text = f"Score: {self.score}"
-        arcade.draw_text(score_text, 10 + self.view_left, 10 + self.view_bottom,
-                         arcade.csscolor.WHITE, 18)
+        self.viewport.draw_text(score_text, 10, 10, arcade.csscolor.WHITE, 18)
 
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed. """
@@ -207,46 +197,7 @@ class MyGame(arcade.Window):
             self.score += 1
 
         # --- Manage Scrolling ---
-
-        # Track if we need to change the viewport
-
-        changed = False
-
-        # Scroll left
-        left_boundary = self.view_left + LEFT_VIEWPORT_MARGIN
-        if self.player.left < left_boundary:
-            self.view_left -= left_boundary - self.player.left
-            changed = True
-
-        # Scroll right
-        right_boundary = self.view_left + SCREEN_WIDTH - RIGHT_VIEWPORT_MARGIN
-        if self.player.right > right_boundary:
-            self.view_left += self.player.right - right_boundary
-            changed = True
-
-        # Scroll up
-        top_boundary = self.view_bottom + SCREEN_HEIGHT - TOP_VIEWPORT_MARGIN
-        if self.player.top > top_boundary:
-            self.view_bottom += self.player.top - top_boundary
-            changed = True
-
-        # Scroll down
-        bottom_boundary = self.view_bottom + BOTTOM_VIEWPORT_MARGIN
-        if self.player.bottom < bottom_boundary:
-            self.view_bottom -= bottom_boundary - self.player.bottom
-            changed = True
-
-        if changed:
-            # Only scroll to integers. Otherwise we end up with pixels that
-            # don't line up on the screen
-            self.view_bottom = int(self.view_bottom)
-            self.view_left = int(self.view_left)
-
-            # Do the scrolling
-            arcade.set_viewport(self.view_left,
-                                SCREEN_WIDTH + self.view_left,
-                                self.view_bottom,
-                                SCREEN_HEIGHT + self.view_bottom)
+        self.viewport.update(self.player.left, self.player.right, self.player.top, self.player.bottom)
 
 
 def main():
