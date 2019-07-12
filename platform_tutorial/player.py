@@ -6,10 +6,7 @@ CHARACTER_SCALING = 1
 class Player(arcade.AnimatedWalkingSprite):
     def __init__(self, image_name, x, y):
         super().__init__(CHARACTER_SCALING)
-        self.initial_x = x
-        self.initial_y = y
-        self.center_x = x
-        self.center_y = y
+        self.set(x, y)
 
         self.stand_right_textures = []
         self.stand_right_textures.append(arcade.load_texture(image_name + "/player_stand.png",
@@ -31,6 +28,13 @@ class Player(arcade.AnimatedWalkingSprite):
                                                                   scale=CHARACTER_SCALING, mirrored=True))
         self.walk_left_textures.append(arcade.load_texture(image_name + "/player_walk2.png",
                                                                   scale=CHARACTER_SCALING, mirrored=True))
+        self.texture_change_distance = 20
+
+    def set(self, x, y):
+        self.initial_x = x
+        self.initial_y = y
+        self.center_x = x
+        self.center_y = y
 
     def reset(self):
         self.center_x = self.initial_x

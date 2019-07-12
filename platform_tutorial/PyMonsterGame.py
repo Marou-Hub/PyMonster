@@ -82,7 +82,10 @@ class MyGame(arcade.Window):
         self.porte_list = arcade.SpriteList()
 
         # Set up the player, specifically placing it at these coordinates.
-        self.player = Player("images/player_1", pos_x, pos_y)
+        if self.player:
+            self.player.set(pos_x, pos_y)
+        else:
+            self.player = Player("images/player_1", pos_x, pos_y)
 
         # --- Load in a map from the tiled editor ---
 
