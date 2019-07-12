@@ -82,7 +82,7 @@ class MyGame(arcade.Window):
         self.porte_list = arcade.SpriteList()
 
         # Set up the player, specifically placing it at these coordinates.
-        self.player = Player("images/player_1/player_stand.png", pos_x, pos_y)
+        self.player = Player("images/player_1", pos_x, pos_y)
 
         # --- Load in a map from the tiled editor ---
 
@@ -194,6 +194,8 @@ class MyGame(arcade.Window):
             # Call update on all sprites (The sprites don't do much in this
             # example though.)
             self.physics_engine.update()
+
+            self.player.update_animation()
     
             # See if we hit any coins
             coin_hit_list = arcade.check_for_collision_with_list(self.player,
