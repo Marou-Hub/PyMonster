@@ -32,6 +32,9 @@ class Viewport:
         arcade.draw_text(text, start_x + self.view_left, start_y + self.view_bottom,
                          color, font_size, width, align, font_name, bold, italic, anchor_x, anchor_y, rotation)
 
+    def shade(self):
+        arcade.draw_lrtb_rectangle_filled(self.view_left, SCREEN_WIDTH + self.view_left, SCREEN_HEIGHT + self.view_bottom, self.view_bottom, [125, 125, 125, 125 ])
+
     def update(self, left, right, top, bottom):
         # --- Manage Scrolling ---
 

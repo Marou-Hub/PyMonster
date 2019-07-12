@@ -563,12 +563,12 @@
  </layer>
  <layer id="9" name="Foreground" width="40" height="17">
   <data encoding="base64" compression="zlib">
-   eJxjYBgFo2AUjIJRMAroC/wG2gGjgCKQQkdzsKWVJCrZPwoGLwAAYqwBxw==
+   eJxjYBgFo2AUjIJRMAroC/wG2gGjgCBIIiCfQgU7iDEDW1oh5LZRMPQBAFYrAik=
   </data>
  </layer>
  <layer id="10" name="Background" width="40" height="17">
   <data encoding="base64" compression="zlib">
-   eJxjYBgFo2AUjIJRMAqGP5CA0uID6grcgBsJDwbAhMT2Y0C4ixT3+VHPOaNghAEAw8oBBQ==
+   eJxjYBgFo2AUjIJRMAqGP5CA0uID6grcgBsJDzbgx4BwFynu86OBW0bByAAAvsoBAw==
   </data>
  </layer>
  <layer id="11" name="porte" width="40" height="17">

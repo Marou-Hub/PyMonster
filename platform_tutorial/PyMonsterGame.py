@@ -56,6 +56,7 @@ class MyGame(arcade.Window):
         # Where is the right edge of the map?
         self.end_of_map = 0
         self.level = 1
+        self.game_over_count_down: float = 0
 
         # Load sounds
         self.collect_coin_sound = arcade.load_sound("sounds/coin1.wav")
@@ -157,10 +158,14 @@ class MyGame(arcade.Window):
         score_text = f"Score: {self.score}"
         self.viewport.draw_text(score_text, 10, 10, arcade.csscolor.WHITE, 18)
 
+        if self.game_over_count_down:
+            self.viewport.shade()
+            self.viewport.draw_text("GAME OVER", SCREEN_WIDTH/2, SCREEN_HEIGHT/2, arcade.csscolor.WHITE, 50, anchor_x="center", anchor_y="center")
+
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed. """
 
-        if key == arcade.key.UP or key == arcade.key.Z:
+        if key == arcade.key.UP or key == arcade.key.SPACE:
             if self.physics_engine.can_jump():
                 self.player.change_y = PLAYER_JUMP_SPEED
                 arcade.play_sound(self.jump_sound)
@@ -179,53 +184,58 @@ class MyGame(arcade.Window):
 
     def update(self, delta_time):
         """ Movement and game logic """
+        if self.game_over_count_down > 0:
+            self.game_over_count_down -= delta_time
+            if self.game_over_count_down <= 0:
+                self.end_game_over()
+        else:
+            # Call update on all sprites (The sprites don't do much in this
+            # example though.)
+            self.physics_engine.update()
+    
+            # See if we hit any coins
+            coin_hit_list = arcade.check_for_collision_with_list(self.player,
+                                                                 self.coin_list)
+    
+            # Loop through each coin we hit (if any) and remove it
+            for coin in coin_hit_list:
+                # Remove the coin
+                coin.remove_from_sprite_lists()
+                # Play a sound
+                arcade.play_sound(self.collect_coin_sound)
+                # Add one to the score
+                self.score += 1
+    
+            # Did the player fall off the map?
+            if self.player.center_y < -100:
+                self.start_game_over()
+                    
+            # Did the player touch something they should not?
+            if arcade.check_for_collision_with_list(self.player, self.dont_touch_list):
+                self.start_game_over()
+    
+            # See if the user got to the end of the level
+            if self.player.center_x >= self.end_of_map:
+                # Advance to the next level
+                self.level += 1
+    
+                # Load the next level
+                self.setup()
+    
+                # Set the camera to the start
+                self.viewport.reset()
+    
+            # --- Manage Scrolling ---
+            self.viewport.update(self.player.left, self.player.right, self.player.top, self.player.bottom)
 
-        # Call update on all sprites (The sprites don't do much in this
-        # example though.)
-        self.physics_engine.update()
-
-        # See if we hit any coins
-        coin_hit_list = arcade.check_for_collision_with_list(self.player,
-                                                             self.coin_list)
-
-        # Loop through each coin we hit (if any) and remove it
-        for coin in coin_hit_list:
-            # Remove the coin
-            coin.remove_from_sprite_lists()
-            # Play a sound
-            arcade.play_sound(self.collect_coin_sound)
-            # Add one to the score
-            self.score += 1
-
-        # Did the player fall off the map?
-        if self.player.center_y < -100:
-            self.player.reset()
-
-            # Set the camera to the start
-            self.viewport.reset()
-            arcade.play_sound(self.game_over)
-                
-        # Did the player touch something they should not?
-        if arcade.check_for_collision_with_list(self.player, self.dont_touch_list):
-            self.player.reset()
-
-            # Set the camera to the start
-            arcade.play_sound(self.game_over)
-            self.viewport.reset()
-
-        # See if the user got to the end of the level
-        if self.player.center_x >= self.end_of_map:
-            # Advance to the next level
-            self.level += 1
-
-            # Load the next level
-            self.setup()
-
-            # Set the camera to the start
-            self.viewport.reset()
-
-        # --- Manage Scrolling ---
-        self.viewport.update(self.player.left, self.player.right, self.player.top, self.player.bottom)
+    def start_game_over(self):
+        arcade.play_sound(self.game_over)
+        self.game_over_count_down = 2
+    
+    def end_game_over(self):
+        self.game_over_count_down = 0
+        self.player.reset()
+        self.viewport.reset()
 
 
 def main():
