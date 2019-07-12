@@ -5,6 +5,7 @@ import arcade
 
 # Constants
 from platform_tutorial.constants import SCREEN_WIDTH, SCREEN_HEIGHT
+from platform_tutorial.road import Road
 from platform_tutorial.viewport import Viewport
 from platform_tutorial.player import Player
 
@@ -55,8 +56,9 @@ class MyGame(arcade.Window):
 
         # Where is the right edge of the map?
         self.end_of_map = 0
-        self.level = 1
         self.game_over_count_down: float = 0
+        self.near_door = False
+        self.road = Road()
 
         # Load sounds
         self.collect_coin_sound = arcade.load_sound("sounds/coin1.wav")
@@ -65,14 +67,12 @@ class MyGame(arcade.Window):
 
         arcade.set_background_color(arcade.csscolor.CORNFLOWER_BLUE)
 
-    def setup(self):
+    def setup(self, level, pos_x, pos_y):
         """ Set up the game here. Call this function to restart the game. """
+        self.road.current_level = level
 
         # Used to keep track of our scrolling
         self.viewport = Viewport()
-
-        # Keep track of the score
-        self.score = 0
 
         # Create the Sprite lists
         self.wall_list = arcade.SpriteList()
@@ -82,12 +82,12 @@ class MyGame(arcade.Window):
         self.porte_list = arcade.SpriteList()
 
         # Set up the player, specifically placing it at these coordinates.
-        self.player = Player("images/player_1/player_stand.png", 64, 96)
+        self.player = Player("images/player_1/player_stand.png", pos_x, pos_y)
 
         # --- Load in a map from the tiled editor ---
 
         # Name of map file to load
-        map_name = "map2_level_1.tmx"
+        map_name = f"map2_level_{level}.tmx"
         # Name of the layer in the file that has our platforms/walls
         platforms_layer_name = 'Platforms'
         # Name of the layer that has items for pick-up
@@ -155,7 +155,7 @@ class MyGame(arcade.Window):
         self.foreground_list.draw()
 
         # Draw our score on the screen, scrolling it with the viewport
-        score_text = f"Score: {self.score}"
+        score_text = f"Score: {self.score} Position: {self.player.center_x}"
         self.viewport.draw_text(score_text, 10, 10, arcade.csscolor.WHITE, 18)
 
         if self.game_over_count_down:
@@ -173,6 +173,8 @@ class MyGame(arcade.Window):
             self.player.change_x = -PLAYER_MOVEMENT_SPEED
         elif key == arcade.key.RIGHT or key == arcade.key.D:
             self.player.change_x = PLAYER_MOVEMENT_SPEED
+        elif key == arcade.key.E and self.near_door:
+            self.enter_door()
 
     def on_key_release(self, key, modifiers):
         """Called when the user releases a key. """
@@ -215,18 +217,35 @@ class MyGame(arcade.Window):
                 self.start_game_over()
     
             # See if the user got to the end of the level
-            if self.player.center_x >= self.end_of_map:
-                # Advance to the next level
-                self.level += 1
-    
+            if self.player.center_x >= self.end_of_map - 32:
+
                 # Load the next level
-                self.setup()
+                next_level, pos_x, pos_y = self.road.exit_right()
+                self.setup(next_level, pos_x, pos_y)
     
                 # Set the camera to the start
                 self.viewport.reset()
-    
+
+            if self.player.center_x <= 0:
+                # Load the next level
+                next_level, pos_x, pos_y = self.road.exit_left()
+                self.setup(next_level, pos_x, pos_y)
+
+                # Set the camera to the start
+                self.viewport.reset()
+
+            if arcade.check_for_collision_with_list(self.player, self.porte_list):
+                self.near_door = True
+            else:
+                self.near_door = False
+
             # --- Manage Scrolling ---
             self.viewport.update(self.player.left, self.player.right, self.player.top, self.player.bottom)
+
+    def enter_door(self):
+        # Load the next level
+        next_level, pos_x, pos_y = self.road.exit_door()
+        self.setup(next_level, pos_x, pos_y)
 
     def start_game_over(self):
         arcade.play_sound(self.game_over)
@@ -241,7 +260,7 @@ class MyGame(arcade.Window):
 def main():
     """ Main method """
     window = MyGame()
-    window.setup()
+    window.setup(1, 64, 96)
     arcade.run()
 
 
