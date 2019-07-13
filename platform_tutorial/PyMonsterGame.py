@@ -85,7 +85,7 @@ class MyGame(arcade.Window):
         if self.player:
             self.player.set(pos_x, pos_y)
         else:
-            self.player = Player("images/player_1", pos_x, pos_y)
+            self.player = Player("images/adventure_girl", pos_x, pos_y)
 
         # --- Load in a map from the tiled editor ---
 
