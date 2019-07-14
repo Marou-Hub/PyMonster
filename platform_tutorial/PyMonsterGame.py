@@ -264,6 +264,7 @@ class MyGame(arcade.Window):
     def start_game_over(self):
         arcade.play_sound(self.game_over)
         self.game_over_count_down = 2
+        self.player.start_dying_animation()
     
     def end_game_over(self):
         self.game_over_count_down = 0

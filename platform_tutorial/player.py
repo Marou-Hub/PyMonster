@@ -132,11 +132,27 @@ class Player(arcade.Sprite):
         if damager:
             x1 = self.center_x
             x2 = damager.center_x
-            nabs = int(math.fabs(x2-x1))
-            if nabs > 5:
-                self.center_x += (x2-x1) / nabs * 5
-            else:
-                self.center_x += x2
+            if x2-x1 > 0:
+                self.center_x += 5
+            elif x2-x1 < 0:
+                self.center_x -= 5
+        texture_list = []
+        if self.face == FACE_LEFT:
+            texture_list = self.die_left_textures
+        elif self.face == FACE_RIGHT:
+            texture_list = self.die_right_textures
+        if self.stand_frame % self.texture_change_frames == 0 and self.cur_texture_index < len(texture_list)-1:
+            self.cur_texture_index += 1
+        self.texture = texture_list[self.cur_texture_index]
+        self.stand_frame += 1
+
+    def start_dying_animation(self):
+        """
+        Move toward damager and resolve gravity collisions.
+        """
+        self.stop()
+        self.stand_frame = 1
+        self.cur_texture_index = 0
 
     def init_old(self, image_name):
         self.stand_right_textures.append(arcade.load_texture(image_name + "/player_stand.png",
@@ -182,6 +198,13 @@ class Player(arcade.Sprite):
                                                                      scale=CHARACTER_SCALING))
             self.jump_down_left_textures.append(arcade.load_texture(image_name + texture_name,
                                                                     scale=CHARACTER_SCALING, mirrored=True))
+
+        for i in range(1, 10):
+            texture_name = f"/Dead ({i}).png"
+            self.die_right_textures.append(arcade.load_texture(image_name + texture_name,
+                                                               scale=CHARACTER_SCALING))
+            self.die_left_textures.append(arcade.load_texture(image_name + texture_name,
+                                                              scale=CHARACTER_SCALING, mirrored=True))
 
     def set(self, x, y):
         self.initial_x = x
