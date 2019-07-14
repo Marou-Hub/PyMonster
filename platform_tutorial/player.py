@@ -2,11 +2,17 @@ import math
 import arcade
 
 CHARACTER_SCALING = 0.21
+LASER_SCALING = 0.8
+
+BULLET_SPEED = 5
+
+ATTACK_DECAY = 10
 
 FACE_RIGHT = 1
 FACE_LEFT = 2
-JUMP_UP = 3
-JUMP_DOWN = 4
+MOVING = 1
+ATTACK = 2
+DYING = 3
 
 
 class Player(arcade.Sprite):
@@ -14,6 +20,7 @@ class Player(arcade.Sprite):
         super().__init__(scale=CHARACTER_SCALING)
         self.set(x, y)
 
+        self.status = MOVING
         self.face = FACE_RIGHT
         self.jumping = False
 
@@ -27,6 +34,10 @@ class Player(arcade.Sprite):
         self.jump_down_left_textures = []
         self.die_right_textures = []
         self.die_left_textures = []
+        self.attack_1_right_textures = []
+        self.attack_1_left_textures = []
+        self.attack_2_right_textures = []
+        self.attack_2_left_textures = []
 
         self.cur_texture_index = 0
         self.texture_change_distance = 20
@@ -38,6 +49,12 @@ class Player(arcade.Sprite):
         self.init_new(image_name)
 
     def update_animation(self, jumping: bool):
+        if self.status == ATTACK:
+            self.update_attack_animation()
+        else:
+            self.update_moving_animation(jumping)
+
+    def update_moving_animation(self, jumping: bool = False):
         """
         Logic for selecting the proper texture to use.
         """
@@ -146,6 +163,17 @@ class Player(arcade.Sprite):
         self.texture = texture_list[self.cur_texture_index]
         self.stand_frame += 1
 
+    def update_attack_animation(self):
+        if self.stand_frame % self.texture_change_frames == 0:
+            if self.cur_texture_index < len(self.textures)-1:
+                self.cur_texture_index += 1
+            else:
+                self.textures = []
+                self.start_moving()
+                return
+        self.set_texture(self.cur_texture_index)
+        self.stand_frame += 1
+
     def start_dying_animation(self):
         """
         Move toward damager and resolve gravity collisions.
@@ -153,6 +181,50 @@ class Player(arcade.Sprite):
         self.stop()
         self.stand_frame = 1
         self.cur_texture_index = 0
+        self.status = DYING
+
+    def start_moving(self):
+        self.texture_change_frames = 5
+        if self.face == FACE_LEFT:
+            self.center_x += ATTACK_DECAY
+        elif self.face == FACE_RIGHT:
+            self.center_x -= ATTACK_DECAY
+        self.status = MOVING
+        self.update_moving_animation()
+
+    def can_attack(self):
+        return self.status == MOVING
+
+    def start_attack_1(self):
+        self.texture_change_frames = 5
+        self.start_attack(self.attack_1_left_textures, self.attack_1_right_textures)
+
+    def start_attack_2(self):
+        self.texture_change_frames = 10
+        self.start_attack(self.attack_2_left_textures, self.attack_2_right_textures)
+        # Create a bullet
+        bullet = arcade.Sprite("images/items/bullet.png", LASER_SCALING)
+        bullet.position = self.position
+        if self.face == FACE_LEFT:
+            bullet.change_x = -BULLET_SPEED
+            bullet.right = self.left
+            bullet.angle = 90
+        elif self.face == FACE_RIGHT:
+            bullet.change_x = BULLET_SPEED
+            bullet.angle = -90
+            bullet.left = self.right
+        return bullet
+
+    def start_attack(self, left_textures, right_textures):
+        self.status = ATTACK
+        self.stand_frame = 1
+        self.cur_texture_index = 0
+        if self.face == FACE_LEFT:
+            self.textures = left_textures
+            self.center_x -= ATTACK_DECAY
+        elif self.face == FACE_RIGHT:
+            self.textures = right_textures
+            self.center_x += ATTACK_DECAY
 
     def init_old(self, image_name):
         self.stand_right_textures.append(arcade.load_texture(image_name + "/player_stand.png",
@@ -206,6 +278,20 @@ class Player(arcade.Sprite):
             self.die_left_textures.append(arcade.load_texture(image_name + texture_name,
                                                               scale=CHARACTER_SCALING, mirrored=True))
 
+        for i in range(1, 7):
+            texture_name = f"/Melee ({i}).png"
+            self.attack_1_right_textures.append(arcade.load_texture(image_name + texture_name,
+                                                               scale=CHARACTER_SCALING))
+            self.attack_1_left_textures.append(arcade.load_texture(image_name + texture_name,
+                                                              scale=CHARACTER_SCALING, mirrored=True))
+
+        for i in range(1, 3):
+            texture_name = f"/Shoot ({i}).png"
+            self.attack_2_right_textures.append(arcade.load_texture(image_name + texture_name,
+                                                                    scale=CHARACTER_SCALING))
+            self.attack_2_left_textures.append(arcade.load_texture(image_name + texture_name,
+                                                                   scale=CHARACTER_SCALING, mirrored=True))
+
     def set(self, x, y):
         self.initial_x = x
         self.initial_y = y
@@ -213,6 +299,8 @@ class Player(arcade.Sprite):
         self.center_y = y
 
     def reset(self):
+        self.status = MOVING
+        self.texture_change_frames = 5
         self.center_x = self.initial_x
         self.center_y = self.initial_y
         self.stop()

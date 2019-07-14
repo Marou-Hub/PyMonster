@@ -42,6 +42,7 @@ class MyGame(arcade.Window):
         self.background_list = None
         self.dont_touch_list = None
         self.porte_list = None
+        self.bullet_list = None
 
         # Separate variable that holds the player sprite
         self.player = None
@@ -84,6 +85,7 @@ class MyGame(arcade.Window):
         self.foreground_list = arcade.SpriteList()
         self.background_list = arcade.SpriteList()
         self.porte_list = arcade.SpriteList()
+        self.bullet_list = arcade.SpriteList()
 
         # Set up the player, specifically placing it at these coordinates.
         if self.player:
@@ -155,6 +157,7 @@ class MyGame(arcade.Window):
         self.background_list.draw()
         self.wall_list.draw()
         self.porte_list.draw()
+        self.bullet_list.draw()
         self.player.draw()
         self.coin_list.draw()
         self.dont_touch_list.draw()
@@ -190,6 +193,14 @@ class MyGame(arcade.Window):
         elif key == arcade.key.RIGHT or key == arcade.key.D:
             self.player.change_x = 0
 
+    def on_mouse_press(self, x: float, y: float, button: int, modifiers: int):
+        if button == arcade.MOUSE_BUTTON_LEFT:
+            if self.player.can_attack():
+                self.player.start_attack_1()
+        elif button == arcade.MOUSE_BUTTON_RIGHT:
+            if self.player.can_attack():
+                self.bullet_list.append(self.player.start_attack_2())
+
     def update(self, delta_time):
         """ Movement and game logic """
         if self.game_over_count_down > 0:
@@ -206,6 +217,12 @@ class MyGame(arcade.Window):
 
             # Call update for player
             self.player.update_animation(self.physics_engine.jumps_since_ground > 0)
+
+            # Update bullets
+            self.bullet_list.update()
+            for bullet in self.bullet_list:
+                if self.viewport.is_off_screen(bullet):
+                    bullet.kill()
     
             # See if we hit any coins
             coin_hit_list = arcade.check_for_collision_with_list(self.player,

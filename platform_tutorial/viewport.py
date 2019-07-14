@@ -81,3 +81,6 @@ class Viewport:
     def reset(self):
         self.view_left = 0
         self.view_bottom = 0
+
+    def is_off_screen(self, sprite: arcade.Sprite):
+        return sprite.left > self.view_left + SCREEN_WIDTH or sprite.right < self.view_left
