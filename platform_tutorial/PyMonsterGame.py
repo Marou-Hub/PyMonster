@@ -5,6 +5,7 @@ import arcade
 
 # Constants
 from platform_tutorial.constants import SCREEN_WIDTH, SCREEN_HEIGHT
+from platform_tutorial.physics_engine import PhysicsEngine
 from platform_tutorial.road import Road
 from platform_tutorial.viewport import Viewport
 from platform_tutorial.player import Player
@@ -53,6 +54,9 @@ class MyGame(arcade.Window):
 
         # Keep track of the score
         self.score = 0
+
+        # Damage
+        self.damager_forward = None
 
         # Where is the right edge of the map?
         self.end_of_map = 0
@@ -138,9 +142,8 @@ class MyGame(arcade.Window):
             arcade.set_background_color(my_map.backgroundcolor)
 
         # Create the 'physics engine'
-        self.physics_engine = arcade.PhysicsEnginePlatformer(self.player,
-                                                             self.wall_list,
-                                                             GRAVITY)
+        self.physics_engine = PhysicsEngine(self.player, self.wall_list, GRAVITY)
+        self.physics_engine.enable_multi_jump(1)
 
     def on_draw(self):
         """ Render the screen. """
@@ -158,7 +161,7 @@ class MyGame(arcade.Window):
         self.foreground_list.draw()
 
         # Draw our score on the screen, scrolling it with the viewport
-        score_text = f"Score: {self.score} Position: {self.player.center_x}"
+        score_text = f"Score: {self.score} Position: {int(self.player.center_x)}"
         self.viewport.draw_text(score_text, 10, 10, arcade.csscolor.WHITE, 18)
 
         if self.game_over_count_down:
@@ -170,7 +173,7 @@ class MyGame(arcade.Window):
 
         if key == arcade.key.UP or key == arcade.key.SPACE:
             if self.physics_engine.can_jump():
-                self.player.change_y = PLAYER_JUMP_SPEED
+                self.physics_engine.jump(PLAYER_JUMP_SPEED)
                 arcade.play_sound(self.jump_sound)
         elif key == arcade.key.LEFT or key == arcade.key.Q:
             self.player.change_x = -PLAYER_MOVEMENT_SPEED
@@ -193,12 +196,16 @@ class MyGame(arcade.Window):
             self.game_over_count_down -= delta_time
             if self.game_over_count_down <= 0:
                 self.end_game_over()
+            else:
+                self.player.update_dying_animation(self.damager_forward)
+                self.physics_engine.update()
+
         else:
-            # Call update on all sprites (The sprites don't do much in this
-            # example though.)
+            # Call update physics
             self.physics_engine.update()
 
-            self.player.update_animation()
+            # Call update for player
+            self.player.update_animation(self.physics_engine.jumps_since_ground > 0)
     
             # See if we hit any coins
             coin_hit_list = arcade.check_for_collision_with_list(self.player,
@@ -218,7 +225,9 @@ class MyGame(arcade.Window):
                 self.start_game_over()
                     
             # Did the player touch something they should not?
-            if arcade.check_for_collision_with_list(self.player, self.dont_touch_list):
+            damager_list = arcade.check_for_collision_with_list(self.player, self.dont_touch_list)
+            if damager_list:
+                self.damager_forward = damager_list[0]
                 self.start_game_over()
     
             # See if the user got to the end of the level
@@ -260,6 +269,7 @@ class MyGame(arcade.Window):
         self.game_over_count_down = 0
         self.player.reset()
         self.viewport.reset()
+        self.damager_forward = None
 
 
 def main():
