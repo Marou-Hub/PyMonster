@@ -533,7 +533,7 @@
  </layer>
  <layer id="5" name="Background" width="40" height="15">
   <data encoding="base64" compression="zlib">
-   eJxjYBgFo2AUjIJRMFiALhDrDLQjcACQ29SBWI1h8LkR5jYFKFYbSMdgAchug+HBBBSwYBCQHQjHYLFXAQse7AAA+IED2w==
+   eJxjYBgFo2AUjIJRMFiALhDrDLQjcACQ29SBWI1h8LkR5jYFKFYbSMdgAchug+HBBBSwYBCQHQjHYLFXAQsmBFyR2MZIbGcC+lwolIcBAGskBR4=
   </data>
  </layer>
  <layer id="6" name="porte" width="40" height="15">

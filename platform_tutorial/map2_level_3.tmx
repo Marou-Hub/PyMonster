@@ -479,14 +479,14 @@
    eJxrYmBgaBrFo3gUj+JRTDfMMGrHiLSD1gAAg+3urQ==
   </data>
  </layer>
- <layer id="1" name="Platforms" width="25" height="20">
-  <data encoding="base64" compression="zlib">
-   eJxjYWBgYKEDpiUYtWPUDnrY4UhDOxgpwOgAXZ7aYYXNDdS0A5c/qWUHvrCkhh2E4ovW5lNqB7Hpjlw7SEnb5NhBav6hNP8Ra4cxEJvQGAMAMXQGpA==
-  </data>
- </layer>
  <layer id="2" name="Coins" width="25" height="20">
   <data encoding="base64" compression="zlib">
    eJxjYBgF5IDFA+2AQQgoCZPR8BwFtASj6Wv4gtG4RQAAn5sDMA==
+  </data>
+ </layer>
+ <layer id="1" name="Platforms" width="25" height="20">
+  <data encoding="base64" compression="zlib">
+   eJxjYWBgYKEDpiUYtWPUDnrY4UhDOxgpwOgAXZ7aYYXNDdS0A5c/qWUHvrCkhh2E4ovW5lNqB7Hpjlw7SEnb5NhBav6hNP8Ra4cxEJvQGAMAMXQGpA==
   </data>
  </layer>
 </map>

@@ -149,8 +149,8 @@ class MyGame(arcade.Window):
         arcade.start_render()
 
         # Draw our sprites
-        self.wall_list.draw()
         self.background_list.draw()
+        self.wall_list.draw()
         self.porte_list.draw()
         self.player.draw()
         self.coin_list.draw()

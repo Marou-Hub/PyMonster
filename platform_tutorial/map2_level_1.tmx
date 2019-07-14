@@ -553,7 +553,7 @@
  </layer>
  <layer id="7" name="Coins" width="40" height="17">
   <data encoding="base64" compression="zlib">
-   eJxjYBgFo2DoghUD7YBRMGzBaNqiHRgN2+EDRuNyFNAKAAAbowKh
+   eJxjYBgFo2DoghUD7YBRMGzBaNqiHRgN2+EHRuN0FFAbAAAWYwKh
   </data>
  </layer>
  <layer id="8" name="Don't Touch" width="40" height="17">
@@ -561,14 +561,14 @@
    eJxjYBgFo2AUjIJRMApGwSgYucAUDY+CgQcAVEcA1Q==
   </data>
  </layer>
- <layer id="9" name="Foreground" width="40" height="17">
-  <data encoding="base64" compression="zlib">
-   eJxjYBgFo2AUjIJRMAroC/wG2gGjgCBIIiCfQgU7iDEDW1oh5LZRMPQBAFYrAik=
-  </data>
- </layer>
  <layer id="10" name="Background" width="40" height="17">
   <data encoding="base64" compression="zlib">
-   eJxjYBgFo2AUjIJRMAqGP5CA0uID6grcgBsJDzbgx4BwFynu86OBW0bByAAAvsoBAw==
+   eJxjYBgFo2AUjIJRMAqoAySAWHygHYEDgNwmBMSCDIPTjSC3cUOx4AC7BRvgRqK58SlEAn40cssoGP4AAKv9ASo=
+  </data>
+ </layer>
+ <layer id="9" name="Foreground" width="40" height="17">
+  <data encoding="base64" compression="zlib">
+   eJxjYBgFo2AUjIJRMAroC/wG2gGjgCBIwiMHir8UKthBjBnY0go+t42C4QEAELICdw==
   </data>
  </layer>
  <layer id="11" name="porte" width="40" height="17">
