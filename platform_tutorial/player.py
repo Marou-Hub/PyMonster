@@ -16,9 +16,9 @@ DYING = 3
 
 
 class Player(arcade.Sprite):
-    def __init__(self, image_name, x, y):
+    def __init__(self, image_name, position):
         super().__init__(scale=CHARACTER_SCALING)
-        self.set(x, y)
+        self.set(position)
 
         self.status = MOVING
         self.face = FACE_RIGHT
@@ -292,19 +292,16 @@ class Player(arcade.Sprite):
             self.attack_2_left_textures.append(arcade.load_texture(image_name + texture_name,
                                                                    scale=CHARACTER_SCALING, mirrored=True))
 
-    def set(self, x, y):
-        self.initial_x = x
-        self.initial_y = y
-        self.center_x = x
-        self.center_y = y
+    def set(self, position):
+        self.initial = position
+        self.position = position
 
     def reset(self):
         self.status = MOVING
         self.texture_change_frames = 5
-        self.center_x = self.initial_x
-        self.center_y = self.initial_y
+        self.position = self.initial
         self.stop()
-        if self.initial_x < 100:
+        if self.center_x < 100:
             self.face = arcade.FACE_RIGHT
         else:
             self.face = arcade.FACE_LEFT
