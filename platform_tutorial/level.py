@@ -51,19 +51,19 @@ class Level:
         self.end_of_map = len(map_array[0]) * GRID_PIXEL_SIZE
 
         # -- Platforms
-        self.wall_list = arcade.generate_sprites(my_map, platforms_layer_name, TILE_SCALING)
+        self.wall_list = generate_sprites(my_map, platforms_layer_name, TILE_SCALING)
 
         # -- Coins
-        self.coin_list = arcade.generate_sprites(my_map, coins_layer_name, COIN_SCALING)
+        self.coin_list = generate_sprites(my_map, coins_layer_name, COIN_SCALING)
 
         # -- Background
-        self.background_list = arcade.generate_sprites(my_map, background_layer_name, TILE_SCALING)
+        self.background_list = generate_sprites(my_map, background_layer_name, TILE_SCALING)
 
         # -- Foreground
-        self.foreground_list = arcade.generate_sprites(my_map, foreground_layer_name, TILE_SCALING)
+        self.foreground_list = generate_sprites(my_map, foreground_layer_name, TILE_SCALING)
 
         # -- Don't Touch Layer
-        self.dont_touch_list = arcade.generate_sprites(my_map, dont_touch_layer_name, TILE_SCALING)
+        self.dont_touch_list = generate_sprites(my_map, dont_touch_layer_name, TILE_SCALING)
 
         # -- Doors Layer
         self.door_list = generate_sprites(my_map, porte_layer_name, TILE_SCALING)

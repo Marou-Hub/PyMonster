@@ -5,6 +5,7 @@ import arcade
 
 # Constants
 from platform_tutorial.animations.explosion import Explosion
+from platform_tutorial.animations.fire import Fire
 from platform_tutorial.constants import SCREEN_WIDTH, SCREEN_HEIGHT
 from platform_tutorial.physics_engine import PhysicsEngine
 from platform_tutorial.road import Road, ACCESS_RIGHT, ACCESS_LEFT, ACCESS_DOOR
@@ -98,8 +99,13 @@ class MyGame(arcade.Window):
         self.explosions_list.draw()
         self.level.post_draw()
 
+        # Debug
+        debug = ""
+        for fire in self.level.dont_touch_list:
+            if (type(fire) is Fire):
+                debug = " frame " + str(fire.cur_texture_index)
         # Draw our score on the screen, scrolling it with the viewport
-        score_text = f"Score: {self.score} Position: {int(self.player.center_x)}"
+        score_text = f"Score: {self.score} Position: {int(self.player.center_x)} {debug}"
         self.viewport.draw_text(score_text, 10, 10, arcade.csscolor.WHITE, 18)
 
         if self.game_over_count_down:

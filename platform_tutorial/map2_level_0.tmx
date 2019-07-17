@@ -567,7 +567,7 @@
    <property name="Id" type="int" value="1"/>
   </properties>
   <data encoding="base64" compression="zlib">
-   eJxjYBgFo2AUjIJRMApGwSigDOwZaAeMgmEFAL1vAL0=
+   eJxjYBgFo2AUjIJRMApGwSigDOwZ5OaNgqEFADWNAXk=
   </data>
  </layer>
  <layer id="7" name="Coins" width="40" height="17">
@@ -592,7 +592,7 @@
  </layer>
  <layer id="13" name="Flags" width="40" height="17">
   <data encoding="base64" compression="zlib">
-   eJxjYBgFo2AUjIJRMApGwSggDayhkppRMAqwAQAjnQFZ
+   eJxjYBgFo2AUjIJRMApGwSggDayhkhoQWEUlNaNg+AAAzmMCrQ==
   </data>
  </layer>
  <layer id="11" name="porte" width="40" height="17">

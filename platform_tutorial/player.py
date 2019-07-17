@@ -38,15 +38,16 @@ class Player(AnimatedCharacter):
         super().start_moving()
 
     def start_attack_1(self):
-        self.texture_change_frames = 5
-        self.start_attack(self.attack_1_left_textures, self.attack_1_right_textures)
         # Create a fake invisible bullet representing the knife hit box
-        self.hit_box = arcade.Sprite("images/tiles/cactus.png", scale=0.5)
-        self.hit_box.points = self.points
+        self.hit_box = arcade.Sprite("images/items/hitbox.png", scale=0.5)
+        self.hit_box.position = self.position
         if self.face == FACE_LEFT:
             self.hit_box.right = self.left
         elif self.face == FACE_RIGHT:
             self.hit_box.left = self.right
+        # Start animation
+        self.texture_change_frames = 5
+        self.start_attack(self.attack_1_left_textures, self.attack_1_right_textures)
         return self.hit_box
 
     def start_attack_2(self):
