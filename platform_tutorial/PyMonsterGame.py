@@ -4,8 +4,8 @@ Platformer Game
 import arcade
 
 # Constants
+from platform_tutorial.animations.explosion import Explosion
 from platform_tutorial.constants import SCREEN_WIDTH, SCREEN_HEIGHT
-from platform_tutorial.level import Level
 from platform_tutorial.physics_engine import PhysicsEngine
 from platform_tutorial.road import Road, ACCESS_RIGHT, ACCESS_LEFT, ACCESS_DOOR
 from platform_tutorial.viewport import Viewport
@@ -32,6 +32,7 @@ class MyGame(arcade.Window):
         # These are 'lists' that keep track of our sprites. Each sprite should
         self.level = None
         self.bullet_list = None
+        self.explosions_list = None
 
         # Separate variable that holds the player sprite
         self.player = None
@@ -57,6 +58,8 @@ class MyGame(arcade.Window):
         self.collect_coin_sound = arcade.load_sound("sounds/coin1.wav")
         self.jump_sound = arcade.load_sound("sounds/jump1.wav")
         self.game_over = arcade.load_sound("sounds/gameover1.wav")
+        self.gun_sound = arcade.sound.load_sound("sounds/laser1.wav")
+        self.hit_sound = arcade.sound.load_sound("sounds/explosion2.wav")
 
         arcade.set_background_color(arcade.csscolor.CORNFLOWER_BLUE)
 
@@ -70,6 +73,7 @@ class MyGame(arcade.Window):
 
         # Create the Sprite lists
         self.bullet_list = arcade.SpriteList()
+        self.explosions_list = arcade.SpriteList()
 
         # Set up the player, specifically placing it at these coordinates.
         if self.player:
@@ -91,6 +95,7 @@ class MyGame(arcade.Window):
         self.level.pre_draw()
         self.bullet_list.draw()
         self.player.draw()
+        self.explosions_list.draw()
         self.level.post_draw()
 
         # Draw our score on the screen, scrolling it with the viewport
@@ -126,10 +131,11 @@ class MyGame(arcade.Window):
     def on_mouse_press(self, x: float, y: float, button: int, modifiers: int):
         if button == arcade.MOUSE_BUTTON_LEFT:
             if self.player.can_attack():
-                self.player.start_attack_1()
+                self.bullet_list.append(self.player.start_attack_1())
         elif button == arcade.MOUSE_BUTTON_RIGHT:
             if self.player.can_attack():
                 self.bullet_list.append(self.player.start_attack_2())
+                arcade.sound.play_sound(self.gun_sound)
 
     def update(self, delta_time):
         """ Movement and game logic """
@@ -146,11 +152,33 @@ class MyGame(arcade.Window):
             self.physics_engine.update()
 
             # Call update for player
-            self.player.update_animation(self.physics_engine.jumps_since_ground > 0)
+            self.level.update_animation()
+            self.explosions_list.update_animation()
+
+            # Call update for player
+            self.player.update_animations(self.physics_engine.jumps_since_ground > 0)
 
             # Update bullets
             self.bullet_list.update()
             for bullet in self.bullet_list:
+                # Check this bullet to see if it hit a coin
+                hit_list = arcade.check_for_collision_with_list(bullet, self.level.enemy_list)
+
+                # If it did, get rid of the bullet
+                if len(hit_list) > 0:
+                    explosion = Explosion()
+                    explosion.center_x = hit_list[0].center_x
+                    explosion.center_y = hit_list[0].center_y
+                    self.explosions_list.append(explosion)
+                    bullet.kill()
+
+                # For every enemy we hit, add to the score and remove the enemy
+                for enemy in hit_list:
+                    enemy.kill()
+                    self.score += 1
+
+                    # Hit Sound
+                    arcade.sound.play_sound(self.hit_sound)
                 if self.viewport.is_off_screen(bullet):
                     bullet.kill()
     

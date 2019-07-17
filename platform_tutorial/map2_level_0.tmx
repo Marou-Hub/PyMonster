@@ -160,6 +160,9 @@
   </tile>
   <tile id="52">
    <image width="128" height="128" source="images/tiles/lavaTop_low.png"/>
+   <objectgroup draworder="index">
+    <object id="3" x="1" y="46" width="126" height="81"/>
+   </objectgroup>
   </tile>
   <tile id="53">
    <image width="128" height="128" source="images/tiles/leverLeft.png"/>

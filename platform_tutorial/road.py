@@ -1,5 +1,4 @@
-import arcade
-
+from platform_tutorial.animations.fire import Fire
 from platform_tutorial.level import Level
 
 ACCESS_LEFT = 0
@@ -50,14 +49,26 @@ class Road:
             target_level = LevelAccess(0, ACCESS_LEFT)
         else:
             target_level = self.levels[self.current_level].get(exit_access)
+        self.current_level = target_level.next_level
+        return self.load_level(target_level.next_level, target_level.next_access)
+
+    def load_level(self, current_level, current_access=ACCESS_LEFT):
         level = Level()
-        level.setup(target_level.next_level)
+        level.setup(current_level)
         position = None
         for access in level.access_list:
-            if access.filename == ACCESS_ITEMS[target_level.next_access]:
+            if access.filename == ACCESS_ITEMS[current_access]:
                 position = access.position
                 break
         if position is None:
-            position = ACCESS_DEFAULT_POSITION[target_level.next_access]
-        self.current_level = target_level.next_level
+            position = ACCESS_DEFAULT_POSITION[current_access]
+        self.current_level = current_level
+        self.customize_level(level)
         return level, position
+
+    def customize_level(self, level):
+        if self.current_level == 0:
+            for coin in level.coin_list:
+                fire = Fire(center_x=coin.center_x, center_y=coin.center_y)
+                level.dont_touch_list.append(fire)
+                coin.kill()

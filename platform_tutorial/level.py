@@ -1,6 +1,7 @@
 import arcade
 
 # Name of the layer in the file that has our platforms/walls
+from platform_tutorial.animations.enemy import generate_enemy
 from platform_tutorial.constants import TILE_SCALING, GRID_PIXEL_SIZE, COIN_SCALING
 
 platforms_layer_name = 'Platforms'
@@ -67,11 +68,14 @@ class Level:
         # -- Doors Layer
         self.door_list = generate_sprites(my_map, porte_layer_name, TILE_SCALING)
 
-        # -- Enemies Layer
-        self.enemy_list = generate_sprites(my_map, enemy_layer_name, TILE_SCALING)
-
         # -- Flag Layer
         self.flag_list = generate_sprites(my_map, flag_layer_name, TILE_SCALING)
+
+        # -- Enemies Layer
+        self.enemy_list = arcade.SpriteList()
+        enemy_placeholders = generate_sprites(my_map, enemy_layer_name, TILE_SCALING)
+        for ep in enemy_placeholders:
+            self.enemy_list.append(generate_enemy(ep.filename, ep.position, self.flag_list))
 
         # -- Access Layer
         self.access_list = generate_sprites(my_map, access_layer_name, TILE_SCALING)
@@ -95,6 +99,10 @@ class Level:
         self.coin_list.draw()
         self.dont_touch_list.draw()
         self.foreground_list.draw()
+
+    def update_animation(self):
+        self.dont_touch_list.update_animation()
+        self.enemy_list.update_animation()
 
 
 def generate_sprites(map_object: arcade.TiledMap, layer_name: str, scaling: float, base_directory="") -> arcade.SpriteList:
