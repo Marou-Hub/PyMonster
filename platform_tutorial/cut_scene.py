@@ -23,6 +23,9 @@ class CutScene:
     def update(self, delta_time):
         pass
 
+    def skip(self):
+        pass
+
 
 class TimeLineCutScene(CutScene):
     def __init__(self, viewport, player, end_timer=-1):
@@ -51,6 +54,9 @@ class TimeLineCutScene(CutScene):
         if self.is_completed():
             self.stop_animation()
 
+    def skip(self):
+        self.timer = self.end_timer
+
     def draw(self):
         if self.cur_draw:
             self.cur_draw()
@@ -75,6 +81,9 @@ class GameOver(CutScene):
         self.game_over_count_down = 0
         self.player.reset()
         self.viewport.reset()
+
+    def skip(self):
+        self.stop_animation()
 
     def is_completed(self):
         return self.game_over_count_down <= 0

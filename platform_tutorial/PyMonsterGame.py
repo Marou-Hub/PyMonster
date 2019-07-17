@@ -124,7 +124,9 @@ class MyGame(arcade.Window):
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed. """
         if self.cut_scene:
-            # todo skip cut scene if tab
+            # skip cut scene if tab
+            if key == arcade.key.TAB or key == arcade.key.E:
+                self.cut_scene.skip()
             return
 
         if key == arcade.key.UP or key == arcade.key.SPACE:
