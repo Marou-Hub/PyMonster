@@ -5,13 +5,12 @@ import arcade
 
 # Constants
 from platform_tutorial.animations.explosion import Explosion
-from platform_tutorial.animations.fire import Fire
 from platform_tutorial.constants import SCREEN_WIDTH, SCREEN_HEIGHT
 from platform_tutorial.cut_scene import GameOver
 from platform_tutorial.physics_engine import PhysicsEngine
+from platform_tutorial.player import Player
 from platform_tutorial.road import Road, ACCESS_RIGHT, ACCESS_LEFT, ACCESS_DOOR
 from platform_tutorial.viewport import Viewport
-from platform_tutorial.player import Player
 
 SCREEN_TITLE = "Platformer"
 
@@ -62,6 +61,9 @@ class MyGame(arcade.Window):
         self.hit_sound = arcade.sound.load_sound("sounds/explosion2.wav")
 
         arcade.set_background_color(arcade.csscolor.CORNFLOWER_BLUE)
+
+        # Cheat codes
+        self.no_damage = False
 
     def _get_cut_scene(self):
         if self._cut_scene:
@@ -139,6 +141,8 @@ class MyGame(arcade.Window):
             self.player.change_x = PLAYER_MOVEMENT_SPEED
         elif key == arcade.key.E and self.near_door:
             self.enter_door()
+        elif key == arcade.key.N:
+            self.no_damage = not self.no_damage
 
     def on_key_release(self, key, modifiers):
         """Called when the user releases a key. """
@@ -225,9 +229,10 @@ class MyGame(arcade.Window):
                 self.start_game_over()
                     
             # Did the player touch something they should not?
-            damager_list = arcade.check_for_collision_with_list(self.player, self.level.dont_touch_list)
-            if damager_list:
-                self.start_game_over(damager_list[0])
+            if not self.no_damage:
+                damager_list = arcade.check_for_collision_with_list(self.player, self.level.dont_touch_list)
+                if damager_list:
+                    self.start_game_over(damager_list[0])
     
             # See if the user got to the end of the level
             if self.player.center_x >= self.level.end_of_map - 32:

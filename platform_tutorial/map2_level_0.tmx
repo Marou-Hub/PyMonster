@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.2" tiledversion="1.2.4" orientation="orthogonal" renderorder="right-down" width="40" height="17" tilewidth="128" tileheight="128" infinite="0" backgroundcolor="#442045" nextlayerid="15" nextobjectid="1">
- <tileset firstgid="1" name="tileset" tilewidth="128" tileheight="128" tilecount="167" columns="0">
+ <tileset firstgid="1" name="tileset" tilewidth="128" tileheight="128" tilecount="170" columns="0">
   <grid orientation="orthogonal" width="1" height="1"/>
   <tile id="0">
    <image width="128" height="128" source="images/tiles/boxCrate.png"/>
@@ -551,6 +551,15 @@
   <tile id="187">
    <image width="128" height="128" source="images/enemies/wormGreen.png"/>
   </tile>
+  <tile id="188">
+   <image width="128" height="128" source="images/enemies/slimeGreen.png"/>
+  </tile>
+  <tile id="189">
+   <image width="128" height="128" source="images/enemies/zombie_1.png"/>
+  </tile>
+  <tile id="190">
+   <image width="128" height="128" source="images/enemies/zombie_2.png"/>
+  </tile>
  </tileset>
  <layer id="6" name="Platforms" width="40" height="17">
   <data encoding="base64" compression="zlib">
@@ -567,7 +576,7 @@
    <property name="Id" type="int" value="1"/>
   </properties>
   <data encoding="base64" compression="zlib">
-   eJxjYBgFo2AUjIJRMApGwSigDOwZ5OaNgqEFADWNAXk=
+   eJxjYBgFo2AUjIJRgAvsH2gHjIJRMMBgHx65vUjsPUTqIRbsIaxkFAxjAACPDARx
   </data>
  </layer>
  <layer id="7" name="Coins" width="40" height="17">
@@ -592,7 +601,7 @@
  </layer>
  <layer id="13" name="Flags" width="40" height="17">
   <data encoding="base64" compression="zlib">
-   eJxjYBgFo2AUjIJRMApGwSggDayhkhoQWEUlNaNg+AAAzmMCrQ==
+   eJxjYBgFo2AUjIJRgAxWYRFbTXdXjIJRMLAAWz4gFayhol3UcM8oGDoAADAnBAA=
   </data>
  </layer>
  <layer id="11" name="porte" width="40" height="17">
