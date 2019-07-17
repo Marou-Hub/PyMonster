@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.2" tiledversion="1.2.4" orientation="orthogonal" renderorder="right-down" width="40" height="17" tilewidth="128" tileheight="128" infinite="0" backgroundcolor="#442045" nextlayerid="12" nextobjectid="1">
- <tileset firstgid="1" name="tileset" tilewidth="128" tileheight="128" tilecount="166" columns="0">
+<map version="1.2" tiledversion="1.2.4" orientation="orthogonal" renderorder="right-down" width="40" height="17" tilewidth="128" tileheight="128" infinite="0" backgroundcolor="#442045" nextlayerid="17" nextobjectid="1">
+ <tileset firstgid="1" name="tileset" tilewidth="128" tileheight="128" tilecount="168" columns="0">
   <grid orientation="orthogonal" width="1" height="1"/>
   <tile id="0">
    <image width="128" height="128" source="images/tiles/boxCrate.png"/>
@@ -545,10 +545,21 @@
   <tile id="186">
    <image width="128" height="128" source="images/items/star.png"/>
   </tile>
+  <tile id="187">
+   <image width="128" height="128" source="images/enemies/wormGreen.png"/>
+  </tile>
+  <tile id="188">
+   <image width="128" height="128" source="images/enemies/slimeGreen.png"/>
+  </tile>
  </tileset>
  <layer id="6" name="Platforms" width="40" height="17">
   <data encoding="base64" compression="zlib">
    eJxjYBgFo2AUjILBA1pwsEcBKqgD4k4oridC/WhYEgeaGSBh1YpHzWhYDg7QSUVMC7OrRjFFGABY3D8Q
+  </data>
+ </layer>
+ <layer id="12" name="Flags" width="40" height="17">
+  <data encoding="base64" compression="zlib">
+   eJxjYBgFo2AUjIJRMApoD9YQ4I+CoQnwxSOxcUxI3WhaGXkAAGnVBAk=
   </data>
  </layer>
  <layer id="7" name="Coins" width="40" height="17">
@@ -556,9 +567,19 @@
    eJxjYBgFo2DoghUD7YBRMGzBaNqiHRgN2+EHRuN0FFAbAAAWYwKh
   </data>
  </layer>
+ <layer id="14" name="Enemies" width="40" height="17">
+  <data encoding="base64" compression="zlib">
+   eJxjYBgFo2AUjIJRMApGwSggH+zBQZNrDiVmjILhAQATWAOt
+  </data>
+ </layer>
  <layer id="8" name="Don't Touch" width="40" height="17">
   <data encoding="base64" compression="zlib">
    eJxjYBgFo2AUjIJRMApGwSgYucAUDY+CgQcAVEcA1Q==
+  </data>
+ </layer>
+ <layer id="16" name="Access" width="40" height="17">
+  <data encoding="base64" compression="zlib">
+   eJztwTEBAAAAwqD1T20ND6AAAODHAAqgAAE=
   </data>
  </layer>
  <layer id="10" name="Background" width="40" height="17">

@@ -9,6 +9,7 @@ SMALL_ENEMY_SPEED = 2
 def generate_enemy(filename, position, flag_list):
     if filename == "images/enemies/wormGreen.png":
         return SmallEnemy("images/worm", position, flag_list)
+    return None
 
 
 class SmallEnemy(AnimatedCharacter):

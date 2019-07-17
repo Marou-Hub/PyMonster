@@ -94,6 +94,8 @@ class MyGame(arcade.Window):
         self.physics_engine = PhysicsEngine(self.player, self.level.wall_list, GRAVITY)
         self.physics_engine.enable_multi_jump(1)
 
+        self.update(0)
+
     def on_draw(self):
         """ Render the screen. """
 
@@ -256,7 +258,7 @@ class MyGame(arcade.Window):
         next_level, pos = self.road.next_level(ACCESS_DOOR)
         self.setup(next_level, pos)
 
-    def start_game_over(self, damager):
+    def start_game_over(self, damager=None):
         self.cut_scene = GameOver(self.viewport, self.player, damager)
         self.cut_scene.start_animation()
 

@@ -100,8 +100,12 @@ class Intro(TimeLineCutScene):
         self.add_event(0, None, self.draw_text_1)
         self.add_event(3, self.update_scrolling, None)
         self.add_event(6, self.update_text_2, self.draw_text_2)
+        self.girl = arcade.Sprite("images/adventure_girl/Adventure.png")
+        self.girl.left = 0
+        self.girl.bottom = 0
 
     def draw_text_1(self):
+        self.girl.draw()
         self.viewport.draw_bubble(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 100, 500, 50, arcade.csscolor.WHITE_SMOKE)
         self.viewport.draw_text("Le village est attaqué par des monstres !!", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 100, arcade.csscolor.LIGHT_SKY_BLUE, 20,
                                 anchor_x="center", anchor_y="center")

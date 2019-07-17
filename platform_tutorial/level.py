@@ -77,7 +77,9 @@ class Level:
         self.enemy_list = arcade.SpriteList()
         enemy_placeholders = generate_sprites(my_map, enemy_layer_name, TILE_SCALING)
         for ep in enemy_placeholders:
-            self.enemy_list.append(generate_enemy(ep.filename, ep.position, self.flag_list))
+            enemy = generate_enemy(ep.filename, ep.position, self.flag_list)
+            if enemy is not None:
+                self.enemy_list.append(enemy)
 
         # -- Access Layer
         self.access_list = generate_sprites(my_map, access_layer_name, TILE_SCALING)
