@@ -15,7 +15,8 @@ class AnimatedCharacter(arcade.Sprite):
         super().__init__(scale=scale)
 
         self.initial = None
-        self.set(position)
+        if position is not None:
+            self.set(position)
 
         self.status = MOVING
         self.face = FACE_RIGHT

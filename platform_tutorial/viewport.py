@@ -32,6 +32,9 @@ class Viewport:
         arcade.draw_text(text, start_x + self.view_left, start_y + self.view_bottom,
                          color, font_size, width, align, font_name, bold, italic, anchor_x, anchor_y, rotation)
 
+    def draw_bubble(self, center_x: float, center_y: float, width: float, height: float, color: arcade.Color):
+        arcade.draw_rectangle_filled(center_x + self.view_left, center_y + self.view_bottom, width, height, color)
+
     def shade(self):
         arcade.draw_lrtb_rectangle_filled(self.view_left, SCREEN_WIDTH + self.view_left, SCREEN_HEIGHT + self.view_bottom, self.view_bottom, [125, 125, 125, 125 ])
 
@@ -77,6 +80,16 @@ class Viewport:
                                 SCREEN_WIDTH + self.view_left,
                                 self.view_bottom,
                                 SCREEN_HEIGHT + self.view_bottom)
+
+    def set(self, left, bottom):
+        self.view_bottom = int(bottom)
+        self.view_left = int(left)
+
+        # Do the scrolling
+        arcade.set_viewport(self.view_left,
+                            SCREEN_WIDTH + self.view_left,
+                            self.view_bottom,
+                            SCREEN_HEIGHT + self.view_bottom)
 
     def reset(self):
         self.view_left = 0

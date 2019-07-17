@@ -7,6 +7,7 @@ import arcade
 from platform_tutorial.animations.explosion import Explosion
 from platform_tutorial.animations.fire import Fire
 from platform_tutorial.constants import SCREEN_WIDTH, SCREEN_HEIGHT
+from platform_tutorial.cut_scene import GameOver
 from platform_tutorial.physics_engine import PhysicsEngine
 from platform_tutorial.road import Road, ACCESS_RIGHT, ACCESS_LEFT, ACCESS_DOOR
 from platform_tutorial.viewport import Viewport
@@ -36,39 +37,49 @@ class MyGame(arcade.Window):
         self.explosions_list = None
 
         # Separate variable that holds the player sprite
-        self.player = None
+        self.player = Player("images/adventure_girl", None)
 
         # Our physics engine
         self.physics_engine = None
 
         # Used to keep track of our scrolling
-        self.viewport = None
+        self.viewport = Viewport()
 
         # Keep track of the score
         self.score = 0
 
-        # Damage
-        self.damager_forward = None
-
-        # Where is the right edge of the map?
-        self.game_over_count_down: float = 0
+        # Placements
         self.near_door = False
-        self.road = Road()
+        self.road = Road(self.viewport, self.player)
+
+        # Cut scenes
+        self._cut_scene = None
 
         # Load sounds
         self.collect_coin_sound = arcade.load_sound("sounds/coin1.wav")
         self.jump_sound = arcade.load_sound("sounds/jump1.wav")
-        self.game_over = arcade.load_sound("sounds/gameover1.wav")
         self.gun_sound = arcade.sound.load_sound("sounds/laser1.wav")
         self.hit_sound = arcade.sound.load_sound("sounds/explosion2.wav")
 
         arcade.set_background_color(arcade.csscolor.CORNFLOWER_BLUE)
 
+    def _get_cut_scene(self):
+        if self._cut_scene:
+            return self._cut_scene
+        else:
+            return self.level.cut_scene
+
+    def _set_cut_scene(self, cs):
+        if cs is not None:
+            self._cut_scene = cs
+        else:
+            self._cut_scene = None
+            self.level.cut_scene = None
+
+    cut_scene = property(_get_cut_scene, _set_cut_scene)
+
     def setup(self, level, position):
         """ Set up the game here. Call this function to restart the game. """
-        # Used to keep track of our scrolling
-        self.viewport = Viewport()
-
         # --- Load in a map from the tiled editor ---
         self.level = level
 
@@ -77,10 +88,7 @@ class MyGame(arcade.Window):
         self.explosions_list = arcade.SpriteList()
 
         # Set up the player, specifically placing it at these coordinates.
-        if self.player:
-            self.player.set(position)
-        else:
-            self.player = Player("images/adventure_girl", position)
+        self.player.set(position)
 
         # Create the 'physics engine'
         self.physics_engine = PhysicsEngine(self.player, self.level.wall_list, GRAVITY)
@@ -101,19 +109,21 @@ class MyGame(arcade.Window):
 
         # Debug
         debug = ""
-        for fire in self.level.dont_touch_list:
-            if (type(fire) is Fire):
-                debug = " frame " + str(fire.cur_texture_index)
+        # for fire in self.level.dont_touch_list:
+        #     if type(fire) is Fire:
+        #         debug = " frame " + str(fire.cur_texture_index)
         # Draw our score on the screen, scrolling it with the viewport
         score_text = f"Score: {self.score} Position: {int(self.player.center_x)} {debug}"
         self.viewport.draw_text(score_text, 10, 10, arcade.csscolor.WHITE, 18)
 
-        if self.game_over_count_down:
-            self.viewport.shade()
-            self.viewport.draw_text("GAME OVER", SCREEN_WIDTH/2, SCREEN_HEIGHT/2, arcade.csscolor.WHITE, 50, anchor_x="center", anchor_y="center")
+        if self.cut_scene:
+            self.cut_scene.draw()
 
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed. """
+        if self.cut_scene:
+            # todo skip cut scene if tab
+            return
 
         if key == arcade.key.UP or key == arcade.key.SPACE:
             if self.physics_engine.can_jump():
@@ -135,6 +145,9 @@ class MyGame(arcade.Window):
             self.player.change_x = 0
 
     def on_mouse_press(self, x: float, y: float, button: int, modifiers: int):
+        if self.cut_scene:
+            return
+
         if button == arcade.MOUSE_BUTTON_LEFT:
             if self.player.can_attack():
                 self.bullet_list.append(self.player.start_attack_1())
@@ -145,12 +158,12 @@ class MyGame(arcade.Window):
 
     def update(self, delta_time):
         """ Movement and game logic """
-        if self.game_over_count_down > 0:
-            self.game_over_count_down -= delta_time
-            if self.game_over_count_down <= 0:
-                self.end_game_over()
+        if self.cut_scene:
+            if self.cut_scene.is_completed():
+                self.cut_scene = None
             else:
-                self.player.update_dying_animation(self.damager_forward)
+                self.cut_scene.update(delta_time)
+                self.level.update_animation()
                 self.physics_engine.update()
 
         else:
@@ -159,6 +172,8 @@ class MyGame(arcade.Window):
 
             # Call update for player
             self.level.update_animation()
+            self.level.enemy_list.update_animation()
+
             self.explosions_list.update_animation()
 
             # Call update for player
@@ -208,8 +223,7 @@ class MyGame(arcade.Window):
             # Did the player touch something they should not?
             damager_list = arcade.check_for_collision_with_list(self.player, self.level.dont_touch_list)
             if damager_list:
-                self.damager_forward = damager_list[0]
-                self.start_game_over()
+                self.start_game_over(damager_list[0])
     
             # See if the user got to the end of the level
             if self.player.center_x >= self.level.end_of_map - 32:
@@ -242,16 +256,9 @@ class MyGame(arcade.Window):
         next_level, pos = self.road.next_level(ACCESS_DOOR)
         self.setup(next_level, pos)
 
-    def start_game_over(self):
-        arcade.play_sound(self.game_over)
-        self.game_over_count_down = 2
-        self.player.start_dying_animation()
-    
-    def end_game_over(self):
-        self.game_over_count_down = 0
-        self.player.reset()
-        self.viewport.reset()
-        self.damager_forward = None
+    def start_game_over(self, damager):
+        self.cut_scene = GameOver(self.viewport, self.player, damager)
+        self.cut_scene.start_animation()
 
 
 def main():

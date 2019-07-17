@@ -1,4 +1,5 @@
 from platform_tutorial.animations.fire import Fire
+from platform_tutorial.cut_scene import Intro
 from platform_tutorial.level import Level
 
 ACCESS_LEFT = 0
@@ -33,7 +34,9 @@ class LevelCrossing:
 
 
 class Road:
-    def __init__(self):
+    def __init__(self, viewport, player):
+        self.viewport = viewport
+        self.player = player
         self.current_level = None
         self.levels = {
             0: LevelCrossing(LevelAccess(0, ACCESS_LEFT), LevelAccess(2, ACCESS_LEFT)),
@@ -72,3 +75,5 @@ class Road:
                 fire = Fire(center_x=coin.center_x, center_y=coin.center_y)
                 level.dont_touch_list.append(fire)
                 coin.kill()
+            level.cut_scene = Intro(self.viewport, self.player)
+            level.cut_scene.start_animation()

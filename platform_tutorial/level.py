@@ -36,6 +36,8 @@ class Level:
         self.access_list = None
         # Where is the right edge of the map?
         self.end_of_map = 0
+        # Cut scenes
+        self.cut_scene = None
 
     def setup(self, level):
         # Name of map file to load
