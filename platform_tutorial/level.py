@@ -120,7 +120,8 @@ def generate_sprites(map_object: arcade.TiledMap, layer_name: str, scaling: floa
     :return: List of sprites
     :rtype: SpriteList
     """
-    sprite_list = arcade.SpriteList()
+    is_wall = platforms_layer_name == layer_name
+    sprite_list = arcade.SpriteList(use_spatial_hash=is_wall, is_static=is_wall)
 
     if layer_name not in map_object.layers_int_data:
         print(f"Warning, no layer named '{layer_name}'.")

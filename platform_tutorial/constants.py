@@ -1,5 +1,9 @@
+# Screen
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 650
+
+# Physics
+GRAVITY = 1
 
 # Constants used to scale our sprites from their original size
 TILE_SCALING = 0.5

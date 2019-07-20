@@ -90,7 +90,7 @@ class AnimatedCharacter(arcade.Sprite):
                     texture_list = self.jump_up_right_textures
                 else:
                     texture_list = self.jump_down_right_textures
-            self.texture = texture_list[self.cur_texture_index]
+            self._safe_set_texture(texture_list)
             if self.cur_texture_index < len(texture_list) - 1:
                 self.cur_texture_index += 1
 
@@ -103,7 +103,7 @@ class AnimatedCharacter(arcade.Sprite):
                 self.cur_texture_index += 1
                 if self.cur_texture_index >= len(texture_list):
                     self.cur_texture_index = 0
-            self.texture = texture_list[self.cur_texture_index]
+            self._safe_set_texture(texture_list)
             self.stand_frame += 1
 
         elif change_direction or distance >= self.texture_change_distance:
@@ -126,9 +126,7 @@ class AnimatedCharacter(arcade.Sprite):
             if next_index >= len(texture_list):
                 next_index = 0
 
-            if self.cur_texture_index >= len(texture_list):
-                self.cur_texture_index = 0
-            self.texture = texture_list[self.cur_texture_index]
+            self._safe_set_texture(texture_list)
             self.cur_texture_index = next_index
 
         if self._texture is None:
@@ -159,9 +157,20 @@ class AnimatedCharacter(arcade.Sprite):
                 texture_list = self.die_right_textures
             if self.cur_texture_index < len(texture_list) - 1:
                 self.cur_texture_index += 1
-                self.texture = texture_list[self.cur_texture_index]
+                try:
+                    self._safe_set_texture(texture_list)
+                except Exception as e:
+                    print(e)
             else:
                 self.on_dead()
+
+    def _safe_set_texture(self, from_texture_list):
+        if self.cur_texture_index >= len(from_texture_list):
+            self.cur_texture_index = 0
+        # try:
+        self.texture = from_texture_list[self.cur_texture_index]
+        # except Exception as e:
+        #     print(e)
 
     def on_dead(self):
         pass

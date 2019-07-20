@@ -1,16 +1,24 @@
 import arcade
 
 from platform_tutorial.animations.animated_character import AnimatedCharacter, FACE_LEFT, FACE_RIGHT
+from platform_tutorial.constants import GRAVITY
+from platform_tutorial.physics_engine import PhysicsEngine
 
 CHARACTER_SCALING = 0.21
 BULLET_SCALING = 0.8
-BULLET_SPEED = 5
+BULLET_SPEED = 10
 ATTACK_DECAY = 10
+# Movement speed of player, in pixels per frame
+PLAYER_MOVEMENT_SPEED = 5
+PLAYER_JUMP_SPEED = 20
 
 
 class Player(AnimatedCharacter):
     def __init__(self, image_name, position):
         super().__init__(position, CHARACTER_SCALING)
+
+        self.physics_engine = None
+        self.jumping: bool = False
 
         self.attack_1_right_textures = []
         self.attack_1_left_textures = []
@@ -74,7 +82,7 @@ class Player(AnimatedCharacter):
         super().start_attack(left_textures, right_textures)
 
     def setup(self, image_name):
-        for i in range(1, 10):
+        for i in range(1, 10, 2):
             texture_name = f"/Idle ({i}).png"
             self.stand_right_textures.append(arcade.load_texture(image_name + texture_name,
                                                                  scale=CHARACTER_SCALING))
@@ -122,3 +130,37 @@ class Player(AnimatedCharacter):
                                                                     scale=CHARACTER_SCALING))
             self.attack_2_left_textures.append(arcade.load_texture(image_name + texture_name,
                                                                    scale=CHARACTER_SCALING, mirrored=True))
+
+    def update_animation(self):
+        jumping = self.is_jumping()
+        self.update_animations(jumping)
+
+    def enable_physics(self, wall_list):
+        # Create the 'physics engine'
+        self.physics_engine = PhysicsEngine(self, wall_list, GRAVITY)
+        self.physics_engine.enable_multi_jump(1)
+
+    def update_physics(self):
+        if self.physics_engine:
+            self.physics_engine.update()
+
+    def jump(self):
+        if self.physics_engine and self.physics_engine.can_jump():
+            self.physics_engine.jump(PLAYER_JUMP_SPEED)
+            return True
+        return False
+
+    def set_jumping(self, jumping):
+        self.jumping = jumping
+
+    def is_jumping(self):
+        return self.physics_engine.jumps_since_ground > 0 if self.physics_engine is not None else self.jumping
+
+    def move_left(self):
+        self.change_x = -PLAYER_MOVEMENT_SPEED
+
+    def move_right(self):
+        self.change_x = PLAYER_MOVEMENT_SPEED
+
+    def stop_move(self):
+        self.change_x = 0

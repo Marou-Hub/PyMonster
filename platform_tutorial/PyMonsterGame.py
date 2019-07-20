@@ -7,17 +7,11 @@ import arcade
 from platform_tutorial.animations.explosion import Explosion
 from platform_tutorial.constants import SCREEN_WIDTH, SCREEN_HEIGHT
 from platform_tutorial.cut_scene import GameOver
-from platform_tutorial.physics_engine import PhysicsEngine
 from platform_tutorial.player import Player
 from platform_tutorial.road import Road, ACCESS_RIGHT, ACCESS_LEFT, ACCESS_DOOR
 from platform_tutorial.viewport import Viewport
 
 SCREEN_TITLE = "Platformer"
-
-# Movement speed of player, in pixels per frame
-PLAYER_MOVEMENT_SPEED = 5
-GRAVITY = 1
-PLAYER_JUMP_SPEED = 20
 
 
 class MyGame(arcade.Window):
@@ -30,16 +24,13 @@ class MyGame(arcade.Window):
         # Call the parent class and set up the window
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
 
-        # These are 'lists' that keep track of our sprites. Each sprite should
         self.level = None
-        self.bullet_list = None
-        self.explosions_list = None
+        # These are 'lists' that keep track of our sprites. Each sprite should
+        self.bullet_list = arcade.SpriteList()
+        self.explosions_list = arcade.SpriteList()
 
         # Separate variable that holds the player sprite
         self.player = Player("images/adventure_girl", None)
-
-        # Our physics engine
-        self.physics_engine = None
 
         # Used to keep track of our scrolling
         self.viewport = Viewport()
@@ -80,21 +71,17 @@ class MyGame(arcade.Window):
 
     cut_scene = property(_get_cut_scene, _set_cut_scene)
 
-    def setup(self, level, position):
+    def setup(self, level, position, with_physics=True):
         """ Set up the game here. Call this function to restart the game. """
         # --- Load in a map from the tiled editor ---
         self.level = level
-
-        # Create the Sprite lists
-        self.bullet_list = arcade.SpriteList()
-        self.explosions_list = arcade.SpriteList()
 
         # Set up the player, specifically placing it at these coordinates.
         self.player.set(position)
 
         # Create the 'physics engine'
-        self.physics_engine = PhysicsEngine(self.player, self.level.wall_list, GRAVITY)
-        self.physics_engine.enable_multi_jump(1)
+        if with_physics:
+            self.player.enable_physics(self.level.wall_list)
 
         self.update(0)
 
@@ -105,25 +92,36 @@ class MyGame(arcade.Window):
         arcade.start_render()
 
         # Draw our sprites
-        self.level.pre_draw()
+        if self.level:
+            self.level.pre_draw()
         self.bullet_list.draw()
-        self.player.draw()
+        self.draw_players()
         self.explosions_list.draw()
-        self.level.post_draw()
+        if self.level:
+            self.level.post_draw()
 
+        score_text = self.hud_console()
+        self.viewport.draw_text(score_text, 10, 10, arcade.csscolor.WHITE, 18)
+
+        if self.cut_scene:
+            self.cut_scene.draw()
+
+    def draw_players(self):
+        self.player.draw()
+
+    def hud_console(self):
         # Debug
         debug = ""
         # for fire in self.level.dont_touch_list:
         #     if type(fire) is Fire:
         #         debug = " frame " + str(fire.cur_texture_index)
         # Draw our score on the screen, scrolling it with the viewport
-        score_text = f"Score: {self.score} Position: {int(self.player.center_x)} {debug}"
-        self.viewport.draw_text(score_text, 10, 10, arcade.csscolor.WHITE, 18)
-
-        if self.cut_scene:
-            self.cut_scene.draw()
+        return f"Score: {self.score} Position: {int(self.player.center_x)} {debug}"
 
     def on_key_press(self, key, modifiers):
+        self.key_press(key, self.player)
+
+    def key_press(self, key, player):
         """Called whenever a key is pressed. """
         if self.cut_scene:
             # skip cut scene if tab
@@ -132,36 +130,43 @@ class MyGame(arcade.Window):
             return
 
         if key == arcade.key.UP or key == arcade.key.SPACE:
-            if self.physics_engine.can_jump():
-                self.physics_engine.jump(PLAYER_JUMP_SPEED)
+            if player.jump():
                 arcade.play_sound(self.jump_sound)
         elif key == arcade.key.LEFT or key == arcade.key.Q:
-            self.player.change_x = -PLAYER_MOVEMENT_SPEED
+            player.move_left()
         elif key == arcade.key.RIGHT or key == arcade.key.D:
-            self.player.change_x = PLAYER_MOVEMENT_SPEED
+            player.move_right()
         elif key == arcade.key.E and self.near_door:
             self.enter_door()
         elif key == arcade.key.N:
             self.no_damage = not self.no_damage
 
     def on_key_release(self, key, modifiers):
+        self.key_release(key, self.player)
+
+    def key_release(self, key, player):
         """Called when the user releases a key. """
+        if self.cut_scene:
+            return
 
         if key == arcade.key.LEFT or key == arcade.key.Q:
-            self.player.change_x = 0
+            player.stop_move()
         elif key == arcade.key.RIGHT or key == arcade.key.D:
-            self.player.change_x = 0
+            player.stop_move()
 
     def on_mouse_press(self, x: float, y: float, button: int, modifiers: int):
+        self.mouse_press(x, y, button, self.player)
+
+    def mouse_press(self, x: float, y: float, button: int, player):
         if self.cut_scene:
             return
 
         if button == arcade.MOUSE_BUTTON_LEFT:
-            if self.player.can_attack():
-                self.bullet_list.append(self.player.start_attack_1())
+            if player.can_attack():
+                self.bullet_list.append(player.start_attack_1())
         elif button == arcade.MOUSE_BUTTON_RIGHT:
-            if self.player.can_attack():
-                self.bullet_list.append(self.player.start_attack_2())
+            if player.can_attack():
+                self.bullet_list.append(player.start_attack_2())
                 arcade.sound.play_sound(self.gun_sound)
 
     def update(self, delta_time):
@@ -172,20 +177,21 @@ class MyGame(arcade.Window):
             else:
                 self.cut_scene.update(delta_time)
                 self.level.update_animation()
-                self.physics_engine.update()
+                self.player.update_physics()
 
         else:
             # Call update physics
-            self.physics_engine.update()
+            self.player.update_physics()
 
             # Call update for player
-            self.level.update_animation()
-            self.level.enemy_list.update_animation()
+            if self.level:
+                self.level.update_animation()
+                self.level.enemy_list.update_animation()
 
             self.explosions_list.update_animation()
 
             # Call update for player
-            self.player.update_animations(self.physics_engine.jumps_since_ground > 0)
+            self.player.update_animation()
 
             # Update bullets
             self.bullet_list.update()
@@ -235,7 +241,7 @@ class MyGame(arcade.Window):
                     self.start_game_over(damager_list[0])
     
             # See if the user got to the end of the level
-            if self.player.center_x >= self.level.end_of_map - 32:
+            if self.current_player.center_x >= self.level.end_of_map - 32:
 
                 # Load the next level
                 next_level, pos = self.road.next_level(ACCESS_RIGHT)
@@ -244,7 +250,7 @@ class MyGame(arcade.Window):
                 # Set the camera to the start
                 self.viewport.reset()
 
-            if self.player.center_x <= 0:
+            if self.current_player.center_x <= 0:
                 # Load the next level
                 next_level, pos = self.road.next_level(ACCESS_LEFT)
                 self.setup(next_level, pos)
@@ -252,13 +258,13 @@ class MyGame(arcade.Window):
                 # Set the camera to the start
                 self.viewport.reset()
 
-            if arcade.check_for_collision_with_list(self.player, self.level.door_list):
+            if arcade.check_for_collision_with_list(self.current_player, self.level.door_list):
                 self.near_door = True
             else:
                 self.near_door = False
 
             # --- Manage Scrolling ---
-            self.viewport.update(self.player.left, self.player.right, self.player.top, self.player.bottom)
+            self.viewport.update(self.current_player.left, self.current_player.right, self.current_player.top, self.current_player.bottom)
 
     def enter_door(self):
         # Load the next level
@@ -268,6 +274,10 @@ class MyGame(arcade.Window):
     def start_game_over(self, damager=None):
         self.cut_scene = GameOver(self.viewport, self.player, damager)
         self.cut_scene.start_animation()
+
+    @property
+    def current_player(self):
+        return self.player
 
 
 def main():
