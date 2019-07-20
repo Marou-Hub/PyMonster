@@ -50,15 +50,22 @@ class MyGameServer(MyGame, Server):
 
     def draw_players(self):
         self.player.draw()
-        if self.connected.is_set():
+        if self.connected.is_set() and self.player2 is not None:
             self.player2.draw()
+
+    def hud_console(self):
+        # Debug
+        hud = f"Score: {self.score} Player1: {int(self.player.center_x)}"
+        if self.connected.is_set() and self.player2 is not None:
+            hud += f" Player2: {int(self.player2.center_x)}"
+        return hud
 
     def update(self, delta_time):
         for event in self.get_events():
             func = self.switch.get(event.event_type, None)
             if func is not None:
                 func(event)
-        if self.connected.is_set():
+        if self.connected.is_set() and self.player2 is not None:
             # Call update physics
             self.player2.update_physics()
             # Call update for player
@@ -77,7 +84,8 @@ class MyGameServer(MyGame, Server):
     def send_world_update(self):
         # players position
         self.send(GameEvent(MOVE, 1, self.player.center_x, self.player.center_y, self.player.change_x, self.player.change_y, self.player.is_jumping()))
-        self.send(GameEvent(MOVE, 2, self.player2.center_x, self.player2.center_y, self.player2.change_x, self.player2.change_y, self.player.is_jumping()))
+        if self.player2:
+            self.send(GameEvent(MOVE, 2, self.player2.center_x, self.player2.center_y, self.player2.change_x, self.player2.change_y, self.player.is_jumping()))
         # only changes since previous frame
 
 

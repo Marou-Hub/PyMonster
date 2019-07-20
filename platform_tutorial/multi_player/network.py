@@ -5,6 +5,7 @@ from threading import Event, Thread
 from platform_tutorial.multi_player.game_event import GameEvent, WELCOME, serialize_event, deserialize_event
 
 SERVER = "127.0.0.1"
+# SERVER = "192.168.1.18"
 PORT = 5555
 
 
@@ -16,6 +17,7 @@ class Network:
         self.incoming_events = queue.Queue()
         self.accept_thread = None
         self.consumer_thread = None
+        print("hostname:", socket.gethostname())
 
     @property
     def socket(self):
