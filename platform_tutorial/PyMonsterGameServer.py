@@ -6,10 +6,14 @@ from platform_tutorial.multi_player.server import Server
 from platform_tutorial.player import Player
 
 
+NETWORK_LATENCY = 0.1
+
+
 class MyGameServer(MyGame, Server):
     def __init__(self):
         MyGame.__init__(self)
         Server.__init__(self)
+        self.latency_timer: float = 0
         self.player2 = None
         self.switch = {
             CREATE: self.setup_player2,
@@ -24,6 +28,13 @@ class MyGameServer(MyGame, Server):
         position = self.player.position
         self.send_world_full_status()
         self.incoming_events.put_nowait(GameEvent(CREATE, 2, position[0], position[1]))
+
+    def setup(self, level, position, with_physics=True):
+        super().setup(level, position, with_physics)
+        if self.connected.is_set():
+            self.send_world_full_status()
+            if self.player2 is not None:
+                self.player2.enable_physics(self.level.wall_list)
 
     def on_client_disconnected(self):
         super().on_client_disconnected()
@@ -73,7 +84,7 @@ class MyGameServer(MyGame, Server):
         # standard update
         super().update(delta_time)
         if self.connected.is_set():
-            self.send_world_update()
+            self.send_world_update(delta_time)
 
     def send_world_full_status(self):
         self.send(GameEvent(LEVEL, self.road.current_level))
@@ -81,12 +92,15 @@ class MyGameServer(MyGame, Server):
         self.send(GameEvent(MOVE, 1, self.player.center_x, self.player.center_y, self.player.change_x, self.player.change_y, self.player.is_jumping()))
         # all mobiles position
 
-    def send_world_update(self):
-        # players position
-        self.send(GameEvent(MOVE, 1, self.player.center_x, self.player.center_y, self.player.change_x, self.player.change_y, self.player.is_jumping()))
-        if self.player2:
-            self.send(GameEvent(MOVE, 2, self.player2.center_x, self.player2.center_y, self.player2.change_x, self.player2.change_y, self.player.is_jumping()))
-        # only changes since previous frame
+    def send_world_update(self, delta_time):
+        self.latency_timer += delta_time
+        if self.latency_timer > NETWORK_LATENCY:
+            self.latency_timer = 0
+            # players position
+            self.send(GameEvent(MOVE, 1, self.player.center_x, self.player.center_y, self.player.change_x, self.player.change_y, self.player.is_jumping()))
+            if self.player2:
+                self.send(GameEvent(MOVE, 2, self.player2.center_x, self.player2.center_y, self.player2.change_x, self.player2.change_y, self.player.is_jumping()))
+            # only changes since previous frame
 
 
 def is_moving(sprite: arcade.Sprite):

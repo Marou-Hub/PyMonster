@@ -43,8 +43,10 @@ class MyGameClient(MyGame, Client):
 
     def load_level(self, event):
         level, pos = self.road.load_level(event.pid)
-        self.player2 = Player("images/adventure_girl_2", None)
-        self.player2.position = pos
+        if self.player2 is None:
+            self.player2 = Player("images/adventure_girl_2", pos)
+        else:
+            self.player2.position = pos
         self.setup(level, pos, False)
         self.ready = True
 
