@@ -4,8 +4,8 @@ from threading import Event, Thread
 
 from platform_tutorial.multi_player.game_event import GameEvent, WELCOME, serialize_event, deserialize_event
 
-SERVER = "127.0.0.1"
-# SERVER = "192.168.1.18"
+# SERVER = "127.0.0.1"
+SERVER = "192.168.1.18"
 PORT = 5555
 
 
