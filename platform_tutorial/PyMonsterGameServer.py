@@ -32,9 +32,10 @@ class MyGameServer(MyGame, Server):
     def setup(self, level, position, with_physics=True):
         super().setup(level, position, with_physics)
         if self.connected.is_set():
-            self.send_world_full_status()
             if self.player2 is not None:
                 self.player2.enable_physics(self.level.wall_list)
+                self.player2.position = position
+            self.send_world_full_status()
 
     def on_client_disconnected(self):
         super().on_client_disconnected()
@@ -90,6 +91,8 @@ class MyGameServer(MyGame, Server):
         self.send(GameEvent(LEVEL, self.road.current_level))
         # player position
         self.send(GameEvent(MOVE, 1, self.player.center_x, self.player.center_y, self.player.change_x, self.player.change_y, self.player.is_jumping()))
+        if self.player2 is not None:
+            self.send(GameEvent(MOVE, 2, self.player2.center_x, self.player2.center_y, self.player2.change_x, self.player2.change_y, self.player2.is_jumping()))
         # all mobiles position
 
     def send_world_update(self, delta_time):
@@ -98,7 +101,7 @@ class MyGameServer(MyGame, Server):
             self.latency_timer = 0
             # players position
             self.send(GameEvent(MOVE, 1, self.player.center_x, self.player.center_y, self.player.change_x, self.player.change_y, self.player.is_jumping()))
-            if self.player2:
+            if self.player2 is not None:
                 self.send(GameEvent(MOVE, 2, self.player2.center_x, self.player2.center_y, self.player2.change_x, self.player2.change_y, self.player.is_jumping()))
             # only changes since previous frame
 
