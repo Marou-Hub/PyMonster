@@ -1,4 +1,5 @@
 from platform_tutorial.animations.fire import Fire
+from platform_tutorial.constants import TILE_PROP
 from platform_tutorial.cut_scene import Intro
 from platform_tutorial.level import Level
 
@@ -6,9 +7,9 @@ ACCESS_LEFT = 0
 ACCESS_RIGHT = 1
 ACCESS_DOOR = 2
 ACCESS_ITEMS = {
-    ACCESS_LEFT: "images/items/flagRed1.png",
-    ACCESS_RIGHT: "images/items/flagRed2.png",
-    ACCESS_DOOR: "images/tiles/doorClosed_mid.png"
+    ACCESS_LEFT: "accessLeft",  # images/items/flagRed1.png
+    ACCESS_RIGHT: "accessRight",  # images/items/flagRed2.png
+    ACCESS_DOOR: "accessDoor"  # images/tiles/doorClosed_mid.png
 }
 ACCESS_DEFAULT_POSITION = {
     ACCESS_LEFT: [64, 96],
@@ -60,7 +61,7 @@ class Road:
         level.setup(current_level)
         position = None
         for access in level.access_list:
-            if access.filename == ACCESS_ITEMS[current_access]:
+            if access.properties[TILE_PROP] == ACCESS_ITEMS[current_access]:
                 position = access.position
                 break
         if position is None:

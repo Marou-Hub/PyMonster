@@ -1,20 +1,21 @@
 import arcade
 
 from platform_tutorial.animations.animated_character import AnimatedCharacter, FACE_LEFT, FACE_RIGHT
+from platform_tutorial.constants import convert_speed_to_frame
 
 SMALL_ENEMY_SCALING = 0.5
-SMALL_ENEMY_SPEED = 0.5
-BIG_ENEMY_SPEED = 1
+SMALL_ENEMY_SPEED = 0.2
+BIG_ENEMY_SPEED = 0.5
 
 
-def generate_enemy(filename, position, flag_list):
-    if filename == "images/enemies/wormGreen.png":
+def generate_enemy(tag, position, flag_list):
+    if tag == "worm":
         return SmallEnemy("images/worm", flag_list, position)
-    if filename == "images/enemies/slimeGreen.png":
+    if tag == "slime":
         return SmallEnemy("images/slime", flag_list, position)
-    if filename == "images/enemies/zombie_1.png":
+    if tag == "zombie_1":
         return BigEnemy("images/zombie_1", flag_list, position, 0.21)
-    if filename == "images/enemies/zombie_2.png":
+    if tag == "zombie_2":
         return BigEnemy("images/zombie_2", flag_list, position, 0.18)
     return None
 
@@ -26,7 +27,7 @@ class Enemy(AnimatedCharacter):
         self.speed = speed
         self.change_x = self.speed
 
-    def update_animation(self):
+    def update_animation(self, delta_time: float = 1/60):
         self.update()
 
         # change direction if hit a flag
@@ -34,10 +35,10 @@ class Enemy(AnimatedCharacter):
             hit_list = arcade.check_for_collision_with_list(self, self.flag_list)
             if len(hit_list) > 0:
                 if self.face == FACE_LEFT:
-                    self.change_x = self.speed
+                    self.change_x = convert_speed_to_frame(self.speed, delta_time)
                 elif self.face == FACE_RIGHT:
-                    self.change_x = -self.speed
-        super().update_animation()
+                    self.change_x = - convert_speed_to_frame(self.speed, delta_time)
+        super().update_animation(delta_time)
 
     def kill(self):
         self.start_dying_animation()

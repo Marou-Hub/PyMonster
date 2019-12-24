@@ -8,9 +8,9 @@ CHARACTER_SCALING = 0.21
 BULLET_SCALING = 0.8
 BULLET_SPEED = 10
 ATTACK_DECAY = 10
-# Movement speed of player, in pixels per frame
-PLAYER_MOVEMENT_SPEED = 5
-PLAYER_JUMP_SPEED = 20
+# Movement speed of player, in tile per second
+PLAYER_MOVEMENT_SPEED = 4
+PLAYER_JUMP_SPEED = 10
 
 
 class Player(AnimatedCharacter):
@@ -26,7 +26,6 @@ class Player(AnimatedCharacter):
         self.attack_2_left_textures = []
 
         self.texture_change_distance = 20
-        self.texture_change_frames = 5
 
         self.hit_box = None
 
@@ -42,7 +41,7 @@ class Player(AnimatedCharacter):
             self.center_x += ATTACK_DECAY
         elif self.face == FACE_RIGHT:
             self.center_x -= ATTACK_DECAY
-        self.texture_change_frames = 5
+        self.texture_change_time = 0.2
         super().start_moving()
 
     def start_attack_1(self):
@@ -54,12 +53,12 @@ class Player(AnimatedCharacter):
         elif self.face == FACE_RIGHT:
             self.hit_box.left = self.right
         # Start animation
-        self.texture_change_frames = 5
+        self.texture_change_time = 0.2
         self.start_attack(self.attack_1_left_textures, self.attack_1_right_textures)
         return self.hit_box
 
     def start_attack_2(self):
-        self.texture_change_frames = 10
+        self.texture_change_time = 0.1
         self.start_attack(self.attack_2_left_textures, self.attack_2_right_textures)
         # Create a bullet
         bullet = arcade.Sprite("images/items/bullet.png", BULLET_SCALING)
@@ -131,18 +130,22 @@ class Player(AnimatedCharacter):
             self.attack_2_left_textures.append(arcade.load_texture(image_name + texture_name,
                                                                    scale=CHARACTER_SCALING, mirrored=True))
 
-    def update_animation(self):
+    def update_animation(self, delta_time: float = 1/60):
         jumping = self.is_jumping()
-        self.update_animations(jumping)
+        # refresh jumping state
+        if jumping and self.change_y == 0 and self.physics_engine:
+            self.physics_engine.can_jump()
+            jumping = self.is_jumping()
+        self.update_animations(delta_time, jumping)
 
     def enable_physics(self, wall_list):
         # Create the 'physics engine'
         self.physics_engine = PhysicsEngine(self, wall_list, GRAVITY)
         self.physics_engine.enable_multi_jump(1)
 
-    def update_physics(self):
+    def update_physics(self, delta_time):
         if self.physics_engine:
-            self.physics_engine.update()
+            self.physics_engine.update(delta_time)
 
     def jump(self):
         if self.physics_engine and self.physics_engine.can_jump():

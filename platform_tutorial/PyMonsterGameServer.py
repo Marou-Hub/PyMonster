@@ -79,9 +79,9 @@ class MyGameServer(MyGame, Server):
                 func(event)
         if self.connected.is_set() and self.player2 is not None:
             # Call update physics
-            self.player2.update_physics()
+            self.player2.update_physics(delta_time)
             # Call update for player
-            self.player2.update_animation()
+            self.player2.update_animation(delta_time)
         # standard update
         super().update(delta_time)
         if self.connected.is_set():

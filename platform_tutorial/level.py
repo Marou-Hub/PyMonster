@@ -1,8 +1,10 @@
 import arcade
 
 # Name of the layer in the file that has our platforms/walls
+from pytiled_parser.objects import TileMap
+
 from platform_tutorial.animations.enemy import generate_enemy
-from platform_tutorial.constants import TILE_SCALING, GRID_PIXEL_SIZE, COIN_SCALING
+from platform_tutorial.constants import TILE_SCALING, GRID_PIXEL_SIZE, COIN_SCALING, TILE_PROP
 
 platforms_layer_name = 'Platforms'
 # Name of the layer that has items for pick-up
@@ -43,14 +45,13 @@ class Level:
         # Name of map file to load
         map_name = f"map2_level_{level}.tmx"
         # Read in the tiled map
-        my_map = arcade.read_tiled_map(map_name, TILE_SCALING)
+        my_map: TileMap = arcade.tilemap.read_tmx(map_name)
 
         # -- Walls
         # Grab the layer of items we can't move through
-        map_array = my_map.layers_int_data[platforms_layer_name]
 
         # Calculate the right edge of the my_map in pixels
-        self.end_of_map = len(map_array[0]) * GRID_PIXEL_SIZE
+        self.end_of_map = my_map.map_size.width * GRID_PIXEL_SIZE
 
         # -- Platforms
         self.wall_list = generate_sprites(my_map, platforms_layer_name, TILE_SCALING)
@@ -77,19 +78,20 @@ class Level:
         self.enemy_list = arcade.SpriteList()
         enemy_placeholders = generate_sprites(my_map, enemy_layer_name, TILE_SCALING)
         for ep in enemy_placeholders:
-            enemy = generate_enemy(ep.filename, ep.position, self.flag_list)
+            enemy = generate_enemy(ep.properties[TILE_PROP], ep.position, self.flag_list)
             if enemy is not None:
                 self.enemy_list.append(enemy)
 
         # -- Access Layer
         self.access_list = generate_sprites(my_map, access_layer_name, TILE_SCALING)
         for door in self.door_list:
-            self.access_list.append(door)
+            if TILE_PROP in door.properties:
+                self.access_list.append(door)
 
         # --- Other stuff
         # Set the background color
-        if my_map.backgroundcolor:
-            arcade.set_background_color(my_map.backgroundcolor)
+        if my_map.background_color:
+            arcade.set_background_color(my_map.background_color)
 
     def pre_draw(self):
         # Draw our sprites
@@ -104,12 +106,12 @@ class Level:
         self.dont_touch_list.draw()
         self.foreground_list.draw()
 
-    def update_animation(self):
-        self.dont_touch_list.update_animation()
-        self.enemy_list.update_animation()
+    def update_animation(self, delta_time):
+        self.dont_touch_list.update_animation(delta_time)
+        self.enemy_list.update_animation(delta_time)
 
 
-def generate_sprites(map_object: arcade.TiledMap, layer_name: str, scaling: float, base_directory="") -> arcade.SpriteList:
+def generate_sprites(map_object: TileMap, layer_name: str, scaling: float, base_directory="") -> arcade.SpriteList:
     """
     Generate the sprites for a layer in a map.
 
@@ -120,32 +122,9 @@ def generate_sprites(map_object: arcade.TiledMap, layer_name: str, scaling: floa
     :return: List of sprites
     :rtype: SpriteList
     """
+    sprite_list = arcade.tilemap.process_layer(map_object, layer_name, scaling, base_directory)
     is_wall = platforms_layer_name == layer_name
-    sprite_list = arcade.SpriteList(use_spatial_hash=is_wall, is_static=is_wall)
-
-    if layer_name not in map_object.layers_int_data:
-        print(f"Warning, no layer named '{layer_name}'.")
-        return sprite_list
-
-    map_array = map_object.layers_int_data[layer_name]
-
-    # Loop through the layer and add in the wall list
-    for row_index, row in enumerate(map_array):
-        for column_index, item in enumerate(row):
-            if str(item) in map_object.global_tile_set:
-                tile_info = map_object.global_tile_set[str(item)]
-                tmx_file = base_directory + tile_info.source
-
-                my_sprite = arcade.Sprite(tmx_file, scaling)
-                my_sprite.right = column_index * (map_object.tilewidth * scaling)
-                my_sprite.top = (map_object.height - row_index) * (map_object.tileheight * scaling)
-                # set filename to identify the tile
-                my_sprite.filename = tmx_file
-
-                if tile_info.points is not None:
-                    my_sprite.set_points(tile_info.points)
-                sprite_list.append(my_sprite)
-            elif item != 0:
-                print(f"Warning, could not find {item} image to load.")
-
+    if is_wall:
+        # sprite_list.use_spatial_hash = True
+        sprite_list.is_static = True
     return sprite_list

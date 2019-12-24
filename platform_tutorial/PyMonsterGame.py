@@ -83,7 +83,7 @@ class MyGame(arcade.Window):
         if with_physics:
             self.player.enable_physics(self.level.wall_list)
 
-        self.update(0)
+        self.update(1/60)
 
     def on_draw(self):
         """ Render the screen. """
@@ -157,6 +157,7 @@ class MyGame(arcade.Window):
     def on_mouse_press(self, x: float, y: float, button: int, modifiers: int):
         self.mouse_press(x, y, button, self.player)
 
+    # noinspection PyUnusedLocal
     def mouse_press(self, x: float, y: float, button: int, player):
         if self.cut_scene:
             return
@@ -176,22 +177,22 @@ class MyGame(arcade.Window):
                 self.cut_scene = None
             else:
                 self.cut_scene.update(delta_time)
-                self.level.update_animation()
-                self.player.update_physics()
+                self.level.update_animation(delta_time)
+                self.player.update_animation(delta_time)
 
         else:
             # Call update physics
-            self.player.update_physics()
+            self.player.update_physics(delta_time)
 
             # Call update for player
             if self.level:
-                self.level.update_animation()
-                self.level.enemy_list.update_animation()
+                self.level.update_animation(delta_time)
+                self.level.enemy_list.update_animation(delta_time)
 
-            self.explosions_list.update_animation()
+            self.explosions_list.update_animation(delta_time)
 
             # Call update for player
-            self.player.update_animation()
+            self.player.update_animation(delta_time)
 
             # Update bullets
             self.bullet_list.update()
@@ -218,8 +219,7 @@ class MyGame(arcade.Window):
                     bullet.kill()
     
             # See if we hit any coins
-            coin_hit_list = arcade.check_for_collision_with_list(self.player,
-                                                                 self.level.coin_list)
+            coin_hit_list = arcade.check_for_collision_with_list(self.player, self.level.coin_list)
     
             # Loop through each coin we hit (if any) and remove it
             for coin in coin_hit_list:

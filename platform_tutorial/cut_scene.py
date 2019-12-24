@@ -100,7 +100,7 @@ class GameOver(CutScene):
             if self.is_completed():
                 self.stop_animation()
             else:
-                self.player.update_dying_animation(self.damager)
+                self.player.update_dying_animation(delta_time, self.damager)
 
 
 class Intro(TimeLineCutScene):

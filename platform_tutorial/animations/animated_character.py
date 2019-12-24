@@ -35,23 +35,23 @@ class AnimatedCharacter(arcade.Sprite):
 
         self.cur_texture_index = 0
         self.texture_change_distance = 20
-        self.texture_change_frames = 5
+        self.texture_change_time: float = 0.2
         self.last_texture_change_center_x = 0
         self.last_texture_change_center_y = 0
-        self.stand_frame = 0
+        self.stand_time: float = 0.
 
-    def update_animation(self):
-        self.update_animations(False)
+    def update_animation(self, delta_time: float = 1/60):
+        self.update_animations(delta_time, False)
 
-    def update_animations(self, jumping: bool):
+    def update_animations(self, delta_time: float, jumping: bool):
         if self.status == ATTACK:
-            self.update_attack_animation()
+            self.update_attack_animation(delta_time)
         elif self.status == DYING:
-            self.update_dying_animation()
+            self.update_dying_animation(delta_time)
         else:
-            self.update_moving_animation(jumping)
+            self.update_moving_animation(delta_time, jumping)
 
-    def update_moving_animation(self, jumping: bool = False):
+    def update_moving_animation(self, delta_time: float, jumping: bool = False):
         """
         Logic for selecting the proper texture to use.
         """
@@ -99,17 +99,19 @@ class AnimatedCharacter(arcade.Sprite):
                 texture_list = self.stand_left_textures
             elif self.face == FACE_RIGHT:
                 texture_list = self.stand_right_textures
-            if self.stand_frame % self.texture_change_frames == 0:
+            if self.stand_time >= self.texture_change_time:
+                self.stand_time = 0.
                 self.cur_texture_index += 1
                 if self.cur_texture_index >= len(texture_list):
                     self.cur_texture_index = 0
+            else:
+                self.stand_time += delta_time
             self._safe_set_texture(texture_list)
-            self.stand_frame += 1
 
         elif change_direction or distance >= self.texture_change_distance:
             self.last_texture_change_center_x = self.center_x
             self.last_texture_change_center_y = self.center_y
-            self.stand_frame = 0
+            self.stand_time = 0.
             next_index = self.cur_texture_index
 
             if self.face == FACE_LEFT:
@@ -136,20 +138,21 @@ class AnimatedCharacter(arcade.Sprite):
             self.height = self._texture.height * self.scale
         self.jumping = jumping
 
-    def update_dying_animation(self, damager: arcade.Sprite = None):
+    def update_dying_animation(self, delta_time: float, damager: arcade.Sprite = None):
         """
         Move toward damager and resolve gravity collisions.
         """
         self.stop()
-        if damager:
+        if damager and damager.properties['Collision'] != 'False':
             x1 = self.center_x
             x2 = damager.center_x
             if x2 - x1 > 0:
                 self.center_x += 5
             elif x2 - x1 < 0:
                 self.center_x -= 5
-        self.stand_frame += 1
-        if self.stand_frame % self.texture_change_frames == 0:
+        self.stand_time += delta_time
+        if self.stand_time >= self.texture_change_time:
+            self.stand_time = 0.
             texture_list = []
             if self.face == FACE_LEFT:
                 texture_list = self.die_left_textures
@@ -177,12 +180,13 @@ class AnimatedCharacter(arcade.Sprite):
 
     def start_dying_animation(self):
         self.stop()
-        self.stand_frame = -1
-        self.cur_texture_index = -1
+        self.stand_time = 0.
+        self.cur_texture_index = 0
         self.status = DYING
 
-    def update_attack_animation(self):
-        if self.stand_frame % self.texture_change_frames == 0:
+    def update_attack_animation(self, delta_time: float):
+        if self.stand_time >= self.texture_change_time:
+            self.stand_time = 0.
             if self.cur_texture_index < len(self.textures) - 1:
                 self.cur_texture_index += 1
             else:
@@ -190,7 +194,7 @@ class AnimatedCharacter(arcade.Sprite):
                 self.start_moving()
                 return
         self.set_texture(self.cur_texture_index)
-        self.stand_frame += 1
+        self.stand_time += delta_time
 
     def start_moving(self):
         self.status = MOVING
@@ -201,7 +205,7 @@ class AnimatedCharacter(arcade.Sprite):
 
     def start_attack(self, left_textures, right_textures):
         self.status = ATTACK
-        self.stand_frame = 1
+        self.stand_time = 0.
         self.cur_texture_index = 0
         if self.face == FACE_LEFT:
             self.textures = left_textures
@@ -214,7 +218,6 @@ class AnimatedCharacter(arcade.Sprite):
 
     def reset(self):
         self.status = MOVING
-        self.texture_change_frames = 5
         self.position = self.initial
         self.stop()
         if self.center_x < 100:

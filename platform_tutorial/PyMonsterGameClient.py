@@ -38,7 +38,7 @@ class MyGameClient(MyGame, Client):
                 func(event)
         if self.level is not None:
             # Call update for player
-            self.player2.update_animations(False)
+            self.player2.update_animations(delta_time, False)
             super().update(delta_time)
 
     def load_level(self, event):

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<tileset version="1.2" tiledversion="1.2.4" name="tileset" tilewidth="128" tileheight="128" tilecount="170" columns="0">
+<tileset version="1.2" tiledversion="1.3.1" name="tileset" tilewidth="128" tileheight="128" tilecount="170" columns="0">
  <grid orientation="orthogonal" width="1" height="1"/>
  <tile id="0">
   <image width="128" height="128" source="images/tiles/boxCrate.png"/>
@@ -83,6 +83,9 @@
   <image width="128" height="128" source="images/tiles/dirtRight.png"/>
  </tile>
  <tile id="27">
+  <properties>
+   <property name="Tag" value="accessDoor"/>
+  </properties>
   <image width="128" height="128" source="images/tiles/doorClosed_mid.png"/>
  </tile>
  <tile id="28">
@@ -168,6 +171,9 @@
   <image width="128" height="128" source="images/tiles/lavaTop_high.png"/>
  </tile>
  <tile id="52">
+  <properties>
+   <property name="Collision" value="False"/>
+  </properties>
   <image width="128" height="128" source="images/tiles/lavaTop_low.png"/>
   <objectgroup draworder="index">
    <object id="3" x="0" y="64">
@@ -548,9 +554,15 @@
   <image width="128" height="128" source="images/items/flagRed_down.png"/>
  </tile>
  <tile id="173">
+  <properties>
+   <property name="Tag" value="accessLeft"/>
+  </properties>
   <image width="128" height="128" source="images/items/flagRed1.png"/>
  </tile>
  <tile id="174">
+  <properties>
+   <property name="Tag" value="accessRight"/>
+  </properties>
   <image width="128" height="128" source="images/items/flagRed2.png"/>
  </tile>
  <tile id="175">
@@ -590,15 +602,27 @@
   <image width="128" height="128" source="images/items/star.png"/>
  </tile>
  <tile id="187">
+  <properties>
+   <property name="Tag" value="worm"/>
+  </properties>
   <image width="128" height="128" source="images/enemies/wormGreen.png"/>
  </tile>
  <tile id="188">
+  <properties>
+   <property name="Tag" value="slime"/>
+  </properties>
   <image width="128" height="128" source="images/enemies/slimeGreen.png"/>
  </tile>
  <tile id="189">
+  <properties>
+   <property name="Tag" value="zombie_1"/>
+  </properties>
   <image width="128" height="128" source="images/enemies/zombie_1.png"/>
  </tile>
  <tile id="190">
+  <properties>
+   <property name="Tag" value="zombie_2"/>
+  </properties>
   <image width="128" height="128" source="images/enemies/zombie_2.png"/>
  </tile>
 </tileset>
