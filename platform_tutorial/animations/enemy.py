@@ -87,5 +87,5 @@ class BigEnemy(Enemy):
         for i in range(1, 10):
             texture_name = f"/Dead ({i}).png"
             self.die_right_textures.append(arcade.load_texture(image_folder + texture_name, scale=self.scale))
-            self.die_left_textures.append(arcade.load_texture(image_folder + texture_name,scale=self.scale, mirrored=True))
+            self.die_left_textures.append(arcade.load_texture(image_folder + texture_name, scale=self.scale, mirrored=True))
 

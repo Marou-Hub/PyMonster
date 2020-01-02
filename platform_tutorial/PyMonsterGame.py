@@ -8,6 +8,7 @@ import arcade
 from platform_tutorial.animations.explosion import Explosion
 from platform_tutorial.constants import SCREEN_WIDTH, SCREEN_HEIGHT
 from platform_tutorial.cut_scene import GameOver, Loading
+from platform_tutorial.fps_monitor import FpsMonitor
 from platform_tutorial.player import Player
 from platform_tutorial.road import Road, ACCESS_RIGHT, ACCESS_LEFT, ACCESS_DOOR
 from platform_tutorial.viewport import Viewport
@@ -38,6 +39,7 @@ class MyGame(arcade.Window):
 
         # Keep track of the score
         self.score = 0
+        self.fps = FpsMonitor()
 
         # Placements
         self.near_door = False
@@ -123,7 +125,7 @@ class MyGame(arcade.Window):
 
     def hud_console(self):
         # Debug
-        debug = ""
+        debug = f" FPS: {self.fps}"
         # for fire in self.level.dont_touch_list:
         #     if type(fire) is Fire:
         #         debug = " frame " + str(fire.cur_texture_index)
@@ -183,6 +185,7 @@ class MyGame(arcade.Window):
                 arcade.sound.play_sound(self.gun_sound)
 
     def update(self, delta_time):
+        self.fps.update(delta_time)
         """ Movement and game logic """
         delta_time = min(delta_time, 1/20)
 
