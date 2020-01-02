@@ -1,12 +1,13 @@
 """
 Platformer Game
 """
+from threading import Thread
+
 import arcade
 
-# Constants
 from platform_tutorial.animations.explosion import Explosion
 from platform_tutorial.constants import SCREEN_WIDTH, SCREEN_HEIGHT
-from platform_tutorial.cut_scene import GameOver
+from platform_tutorial.cut_scene import GameOver, Loading
 from platform_tutorial.player import Player
 from platform_tutorial.road import Road, ACCESS_RIGHT, ACCESS_LEFT, ACCESS_DOOR
 from platform_tutorial.viewport import Viewport
@@ -44,12 +45,13 @@ class MyGame(arcade.Window):
 
         # Cut scenes
         self._cut_scene = None
+        self.loading = None
 
         # Load sounds
-        self.collect_coin_sound = arcade.load_sound("sounds/coin1.wav")
-        self.jump_sound = arcade.load_sound("sounds/jump1.wav")
-        self.gun_sound = arcade.sound.load_sound("sounds/laser1.wav")
-        self.hit_sound = arcade.sound.load_sound("sounds/explosion2.wav")
+        self.collect_coin_sound = None
+        self.jump_sound = None
+        self.gun_sound = None
+        self.hit_sound = None
 
         arcade.set_background_color(arcade.csscolor.CORNFLOWER_BLUE)
 
@@ -71,6 +73,13 @@ class MyGame(arcade.Window):
 
     cut_scene = property(_get_cut_scene, _set_cut_scene)
 
+    def is_loading(self):
+        return self.loading is not None and self.loading.is_alive()
+
+    def load_level(self, exit_access=ACCESS_LEFT, initial=False):
+        self.loading = LoadingThread(self, exit_access, initial)
+        self.loading.start()
+
     def setup(self, level, position, with_physics=True):
         """ Set up the game here. Call this function to restart the game. """
         # --- Load in a map from the tiled editor ---
@@ -91,20 +100,23 @@ class MyGame(arcade.Window):
         # Clear the screen to the background color
         arcade.start_render()
 
-        # Draw our sprites
-        if self.level:
-            self.level.pre_draw()
-        self.bullet_list.draw()
-        self.draw_players()
-        self.explosions_list.draw()
-        if self.level:
-            self.level.post_draw()
+        if self.is_loading():
+            self.loading.draw()
+        else:
+            # Draw our sprites
+            if self.level:
+                self.level.pre_draw()
+            self.bullet_list.draw()
+            self.draw_players()
+            self.explosions_list.draw()
+            if self.level:
+                self.level.post_draw()
 
-        score_text = self.hud_console()
-        self.viewport.draw_text(score_text, 10, 10, arcade.csscolor.WHITE, 18)
+            score_text = self.hud_console()
+            self.viewport.draw_text(score_text, 10, 10, arcade.csscolor.WHITE, 18)
 
-        if self.cut_scene:
-            self.cut_scene.draw()
+            if self.cut_scene:
+                self.cut_scene.draw()
 
     def draw_players(self):
         self.player.draw()
@@ -172,12 +184,17 @@ class MyGame(arcade.Window):
 
     def update(self, delta_time):
         """ Movement and game logic """
-        if self.cut_scene:
+        delta_time = min(delta_time, 1/20)
+
+        if self.is_loading():
+            pass
+        elif self.cut_scene:
             if self.cut_scene.is_completed():
                 self.cut_scene = None
             else:
                 self.cut_scene.update(delta_time)
                 self.level.update_animation(delta_time)
+                self.player.update_physics(delta_time)
                 self.player.update_animation(delta_time)
 
         else:
@@ -244,16 +261,14 @@ class MyGame(arcade.Window):
             if self.current_player.center_x >= self.level.end_of_map - 32:
 
                 # Load the next level
-                next_level, pos = self.road.next_level(ACCESS_RIGHT)
-                self.setup(next_level, pos)
-    
+                self.load_level(ACCESS_RIGHT)
+
                 # Set the camera to the start
                 self.viewport.reset()
 
             if self.current_player.center_x <= 0:
                 # Load the next level
-                next_level, pos = self.road.next_level(ACCESS_LEFT)
-                self.setup(next_level, pos)
+                self.load_level(ACCESS_LEFT)
 
                 # Set the camera to the start
                 self.viewport.reset()
@@ -268,8 +283,7 @@ class MyGame(arcade.Window):
 
     def enter_door(self):
         # Load the next level
-        next_level, pos = self.road.next_level(ACCESS_DOOR)
-        self.setup(next_level, pos)
+        self.load_level(ACCESS_DOOR)
 
     def start_game_over(self, damager=None):
         self.cut_scene = GameOver(self.viewport, self.player, damager)
@@ -280,11 +294,28 @@ class MyGame(arcade.Window):
         return self.player
 
 
+class LoadingThread(Thread, Loading):
+    def __init__(self, game: MyGame, exit_access, initial=False):
+        Thread.__init__(self)
+        Loading.__init__(self, game.viewport)
+        self.game = game
+        self.exit_access = exit_access
+        self.initial = initial
+
+    def run(self):
+        if self.initial:
+            self.game.collect_coin_sound = arcade.load_sound("sounds/coin1.wav")
+            self.game.jump_sound = arcade.load_sound("sounds/jump1.wav")
+            self.game.gun_sound = arcade.sound.load_sound("sounds/laser1.wav")
+            self.game.hit_sound = arcade.sound.load_sound("sounds/explosion2.wav")
+        next_level, pos = self.game.road.next_level(self.exit_access)
+        self.game.setup(next_level, pos)
+
+
 def main():
     """ Main method """
-    window = MyGame()
-    next_level, pos = window.road.next_level()
-    window.setup(next_level, pos)
+    game = MyGame()
+    game.load_level(None, True)
 
     arcade.run()
 

@@ -77,4 +77,3 @@ class Road:
                 level.dont_touch_list.append(fire)
                 coin.kill()
             level.cut_scene = Intro(self.viewport, self.player)
-            level.cut_scene.start_animation()

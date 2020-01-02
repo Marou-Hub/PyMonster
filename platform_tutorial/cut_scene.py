@@ -7,6 +7,7 @@ class CutScene:
     def __init__(self, viewport, player):
         self.viewport = viewport
         self.player = player
+        self.started = False
 
     def start_animation(self):
         pass
@@ -21,7 +22,9 @@ class CutScene:
         pass
 
     def update(self, delta_time):
-        pass
+        if not self.started:
+            self.start_animation()
+            self.started = True
 
     def skip(self):
         pass
@@ -40,6 +43,7 @@ class TimeLineCutScene(CutScene):
         self.events.append([trigger_time, update_func, draw_func])
 
     def update(self, delta_time):
+        super().update(delta_time)
         self.timer += delta_time
         self.cur_update = None
         self.cur_draw = None
@@ -94,6 +98,7 @@ class GameOver(CutScene):
                                 anchor_x="center", anchor_y="center")
 
     def update(self, delta_time):
+        super().update(delta_time)
         """ Movement and game logic """
         if self.game_over_count_down > 0:
             self.game_over_count_down -= delta_time
@@ -101,6 +106,16 @@ class GameOver(CutScene):
                 self.stop_animation()
             else:
                 self.player.update_dying_animation(delta_time, self.damager)
+
+
+class Loading(CutScene):
+    def __init__(self, viewport):
+        super().__init__(viewport, None)
+
+    def draw(self):
+        self.viewport.shade()
+        self.viewport.draw_text("Loading", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, arcade.csscolor.WHITE, 50,
+                                anchor_x="center", anchor_y="center")
 
 
 class Intro(TimeLineCutScene):
@@ -126,10 +141,10 @@ class Intro(TimeLineCutScene):
 
     def update_scrolling(self, delta_time):
         self.viewport.set(self.viewport.view_left + 5, 0)
-        self.player.update_animation()
+        self.player.update_animation(delta_time)
 
     def update_text_2(self, delta_time):
-        self.player.update_animation()
+        self.player.update_animation(delta_time)
 
     def start_animation(self):
         self.viewport.set(0, 0)

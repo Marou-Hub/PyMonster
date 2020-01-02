@@ -36,6 +36,7 @@ class Level:
         self.enemy_list = None
         self.flag_list = None
         self.access_list = None
+        self.background_color = None
         # Where is the right edge of the map?
         self.end_of_map = 0
         # Cut scenes
@@ -90,10 +91,13 @@ class Level:
 
         # --- Other stuff
         # Set the background color
-        if my_map.background_color:
-            arcade.set_background_color(my_map.background_color)
+        self.background_color = my_map.background_color
 
     def pre_draw(self):
+        # Background
+        if self.background_color:
+            arcade.set_background_color(self.background_color)
+
         # Draw our sprites
         self.background_list.draw()
         self.wall_list.draw()
