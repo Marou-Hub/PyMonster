@@ -1,0 +1,3 @@
+title=Touch the Sky
+author=SMAppz
+orientation=portrait
