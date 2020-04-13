@@ -18,21 +18,32 @@ from kivy.uix.widget import Widget
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window, platform
-from os.path import join, dirname
-import struct
+from os.path import join, dirname, isfile
+import numpy as np
 
 # KIVY LAUNCHER uses KIVY 1.9.1 and PYTHON 2.7.2 !!
-# Things that DO NOT WORK with KIVY LAUNCHER (but work on desktop)
+# Things that DO NOT WORK with KIVY LAUNCHER (specific python 3)
 # - Overriding App __init__
 # - Formatted strings in Label: ie Label(text=f"toto{var}", ... (however, string concat works)
 
+#############################################################################################
+# Globals & constants
+#############################################################################################
+
 curdir = dirname(__file__)
 epsilon = 0.01
-wall = [0., 0., 0., 1.]
-charge = [1., 0., 0., 1.]
-win = [0., 1., 0., 1.]
+wall = 1
+charge = 2
+win = 3
+sm = ScreenManager()
+# settings
+cur_level = 1
+max_level = 20
 
 
+#############################################################################################
+# Intro
+#############################################################################################
 class Intro(Screen):
     def build(self):
         self.name = 'Intro'  # On donne un nom a l'ecran
@@ -92,9 +103,13 @@ class Intro(Screen):
             self.grabing = False
 
 
+#############################################################################################
+# Level Menu
+#############################################################################################
 class TreeViewButton(BoxLayout, TreeViewNode):
-    def build(self, text, lock):
-        self.add_widget(Label(text='[color=ff0000][size=60]' + text + '[/size][/color]', markup=True, halign='center'))
+    def build(self, level, lock):
+        self.level = level
+        self.add_widget(Label(text='[color=ff0000][size=60]Level ' + str(level) + '[/size][/color]', markup=True, halign='center'))
         self.add_widget(Image(source=join(curdir, 'images', 'Lock.png' if lock else 'Play.png')))
         if lock:
             self.disabled = True
@@ -102,6 +117,7 @@ class TreeViewButton(BoxLayout, TreeViewNode):
     def on_touch_down(self, touch):
         super(TreeViewButton, self).on_touch_down(touch)
         # switch to game screen
+        play.load(self.level)
         sm.current = 'Playground'
 
 
@@ -119,10 +135,9 @@ class Menu(Screen):
         layout.add_widget(buttons)
         tv = TreeView(hide_root=True, size_hint_y=None)
         tv.bind(minimum_height=tv.setter('height'))
-        max_level = 1
-        for i in range(1, 20):
+        for i in range(1, max_level):
             tvb = TreeViewButton()
-            tvb.build('Level ' + str(i), i > max_level)
+            tvb.build(i, i > cur_level)
             tv.add_node(tvb)
         sv = ScrollView(bar_width=50, do_scroll_x=False)
         sv.add_widget(tv)
@@ -130,6 +145,9 @@ class Menu(Screen):
         self.add_widget(layout)
 
 
+#############################################################################################
+# Playground
+#############################################################################################
 def damper_it(value, damper_value):
     if value > epsilon:
         value -= damper_value
@@ -243,17 +261,26 @@ class Playground(Screen):
 
     def build(self):
         self.name = 'Playground'  # On donne un nom a l'ecran
-        # map + TODO background
-        self.map = Image(source=join(curdir, 'images', 'map1.png'), allow_stretch=True, keep_ratio=False)
-        self.add_widget(self.map)
+        self.map = None
+        self.background = None
         # custom widget
         widget = Widget()
-        #widget._hue = 0.55
-        #widget.bind(size=self.update_bounds, pos=self.update_bounds)
         widget.texture = Image(source=join(curdir, 'images', 'circle.png'), mipmap=True).texture
         self.add_widget(widget)
-        self.init_physics()
         self.event = None
+
+    def load(self, level):
+        if self.background is not None:
+            self.remove_widget(self.background)
+        # map
+        self.level = level
+        self.map = np.load(join(curdir, 'maps', 'map' + str(level) + '.npy'))
+        # background
+        image_file = join(curdir, 'maps', 'background' + str(level) + '.png')
+        if not isfile(image_file):
+            image_file = join(curdir, 'maps', 'map' + str(level) + '.png')
+        self.background = Image(source=image_file, allow_stretch=True, keep_ratio=False)
+        self.add_widget(self.background, 1)
 
     def on_enter(self, *args):
         self.event = Clock.schedule_interval(self.step, 1 / 30.)
@@ -261,32 +288,25 @@ class Playground(Screen):
     def on_leave(self, *args):
         self.event.cancel()
 
-    def init_physics(self):
-        # create the space for physics simulation
-        pass
-
     def scan_map(self, x, y, radius):
         # translate to texture coordinates
-        image_size = self.map.size
-        texture_size = self.map.texture.size
+        image_size = self.background.size
+        texture_size = self.map.shape
         x = int((x + radius) * texture_size[0] // image_size[0])
         y = int(y * texture_size[1] // image_size[1])
         dy = int(2 * radius * texture_size[1] // image_size[1])
         got_charge = False
         got_wall = None
         for i in range(dy):
-            pixel = self.map.texture.get_region(x, y + i, 1, 1)
-            bp = pixel.pixels
-            data = struct.unpack('4B', bp)
-            color = [c / 255.0 for c in data]
-            if color == wall:
+            pixel = self.map[x, y + i]
+            if pixel == wall:
                 if got_wall is None:
                     got_wall_bt = (y + i) * image_size[1] // texture_size[1]
                 else:
                     got_wall_bt = got_wall[0]
                 got_wall_top = (y + i + 1) * image_size[1] // texture_size[1]
                 got_wall = (got_wall_bt, got_wall_top)
-            got_charge = color == charge if not got_charge else True
+            got_charge = pixel == charge if not got_charge else True
         return got_wall, got_charge
 
     def step(self, dt):
@@ -323,7 +343,9 @@ class Playground(Screen):
             self.circle.bounce(touch.x, touch.y)
 
 
-sm = ScreenManager()
+#############################################################################################
+# Screen & Application
+#############################################################################################
 intro = Intro()
 intro.build()
 sm.add_widget(intro)
