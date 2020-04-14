@@ -31,10 +31,14 @@ import numpy as np
 #############################################################################################
 
 curdir = dirname(__file__)
-epsilon = 0.01
-wall = 1
-charge = 2
-win = 3
+EPSILON = 0.01
+WALL = 1
+CHARGE = 2
+VICTORY = 3
+WALL_N = 1000
+WALL_S = 1001
+WALL_W = 1002
+WALL_E = 1003
 sm = ScreenManager()
 # settings
 cur_level = 1
@@ -59,13 +63,13 @@ class Intro(Screen):
         # labels
         self.grabing = False
         self.event = None
-        layout.add_widget(Label(text='[color=ff0000][size=60]Touch the SKY[/size][/color]', markup=True, halign='center',
+        layout.add_widget(Label(text='[color=ff0000][size=60sp]Touch the SKY[/size][/color]', markup=True, halign='center',
                                 size_hint=(.5, .25), pos_hint={'x': .25, 'y': .7}))
-        layout.add_widget(Label(text='[size=20]Kivy v.' + kivy.__version__ + '[/size]', markup=True,
+        layout.add_widget(Label(text='[size=20sp]Kivy v.' + kivy.__version__ + '[/size]', markup=True,
                                 halign='center', size_hint=(.5, .15), pos_hint={'x': .25, 'y': .45}))
-        layout.add_widget(Label(text='[size=20]Python v.' + python_version() + '[/size]', markup=True,
+        layout.add_widget(Label(text='[size=20sp]Python v.' + python_version() + '[/size]', markup=True,
                                 halign='center', size_hint=(.5, .15), pos_hint={'x': .25, 'y': .55}))
-        layout.add_widget(Label(text='[color=ff0000][size=30]Tap to start[/size][/color]', markup=True,
+        layout.add_widget(Label(text='[color=ff0000][size=30sp]Tap to start[/size][/color]', markup=True,
                                 halign='center', size_hint=(.5, .15), pos_hint={'x': .25, 'y': .2}))
         self.add_widget(layout)
 
@@ -149,13 +153,13 @@ class Menu(Screen):
 # Playground
 #############################################################################################
 def damper_it(value, damper_value):
-    if value > epsilon:
+    if value > EPSILON:
         value -= damper_value
-        if value < epsilon:
+        if value < EPSILON:
             value = 0
-    elif value < -epsilon:
+    elif value < -EPSILON:
         value += damper_value
-        if value > -epsilon:
+        if value > -EPSILON:
             value = 0
     else:
         value = 0
@@ -175,6 +179,7 @@ class Circle(Rectangle):
     force_bounce = 800
 
     def build(self, x, y):
+        self.radius = Window.size[0] / 30
         self.pos = (x - self.radius, y - self.radius)
         self.size = (self.radius * 2, self.radius * 2)
 
@@ -226,16 +231,15 @@ class Circle(Rectangle):
             self.damper_force(dt)
             self.pos = (x, y)
 
-    def collide(self, last_pos, got_wall):
+    def collide(self, last_pos, got):
         (x, y) = self.pos
         _y = last_pos[1] + self.radius
         # wall collision
-        if got_wall is not None:
-            (got_wall_bt, got_wall_top) = got_wall
-            if _y < got_wall_bt:
-                y = got_wall_bt - self.radius * 2
-            else:
-                y = got_wall_top
+        if WALL_N in got:
+            y = got[WALL_N] - self.radius * 2
+            self.choc(0.9, -0.6)
+        elif WALL_S in got:
+            y = got[WALL_S]
             self.choc(0.9, -0.6)
         # border collision
         if y < 0:
@@ -288,26 +292,38 @@ class Playground(Screen):
     def on_leave(self, *args):
         self.event.cancel()
 
-    def scan_map(self, x, y, radius):
+    def scan_map(self, last_pos, new_pos, radius):
+        (x1, y1) = last_pos
+        (x2, y2) = new_pos
+        # dx = x2 - x1
+        dy = y2 - y1
+        up = dy > 0
         # translate to texture coordinates
         image_size = self.background.size
         texture_size = self.map.shape
-        x = int((x + radius) * texture_size[0] // image_size[0])
-        y = int(y * texture_size[1] // image_size[1])
-        dy = int(2 * radius * texture_size[1] // image_size[1])
-        got_charge = False
-        got_wall = None
-        for i in range(dy):
-            pixel = self.map[x, y + i]
-            if pixel == wall:
-                if got_wall is None:
-                    got_wall_bt = (y + i) * image_size[1] // texture_size[1]
-                else:
-                    got_wall_bt = got_wall[0]
-                got_wall_top = (y + i + 1) * image_size[1] // texture_size[1]
-                got_wall = (got_wall_bt, got_wall_top)
-            got_charge = pixel == charge if not got_charge else True
-        return got_wall, got_charge
+        x = int((x2 + radius) * texture_size[0] // image_size[0])
+        oriy = int(y1 * texture_size[1] // image_size[1])
+        r = int(2 * radius * texture_size[1] // image_size[1])
+        if not up:
+            oriy += r
+        # dx = int((dx + radius) * texture_size[0] // image_size[0])
+        dy = int(dy * texture_size[1] // image_size[1])
+        got = {}
+        scany = dy + r if up else max(abs(dy), r)
+        for i in range(scany):
+            y = oriy + i if up else oriy - i - 1
+            pixel = self.map[x, y]
+            if pixel == 0:
+                continue
+            if pixel == WALL:
+                if up:
+                    if WALL_N not in got:
+                        got[WALL_N] = y * image_size[1] // texture_size[1]
+                elif WALL_S not in got:
+                    got[WALL_S] = (y + 1) * image_size[1] // texture_size[1]
+            elif pixel == CHARGE:
+                got[CHARGE] = True
+        return got
 
     def step(self, dt):
         # Update animations
@@ -316,9 +332,8 @@ class Playground(Screen):
             last_pos = self.circle.pos
             self.circle.step(dt)
             # Detect if charged (near floor for now)
-            (x, y) = self.circle.pos
-            (got_wall, got_charge) = self.scan_map(x, y, self.circle.radius)
-            if got_charge:
+            got = self.scan_map(last_pos, self.circle.pos, self.circle.radius)
+            if CHARGE in got:
                 if not self.charged:
                     self.color.v = 1
                     self.charged = True
@@ -326,7 +341,7 @@ class Playground(Screen):
                 self.color.v = .2
                 self.charged = False
             # compute collisions
-            self.circle.collide(last_pos, got_wall)
+            self.circle.collide(last_pos, got)
 
     def add_circle(self, x, y):
         widget = self.children[0]
@@ -347,14 +362,8 @@ class Playground(Screen):
 # Screen & Application
 #############################################################################################
 intro = Intro()
-intro.build()
-sm.add_widget(intro)
 menu = Menu()
-menu.build()
-sm.add_widget(menu)
 play = Playground()
-play.build()
-sm.add_widget(play)
 
 
 class SkyKivyApp(App):
@@ -363,6 +372,12 @@ class SkyKivyApp(App):
     icon = 'icon.png'
 
     def build(self):
+        intro.build()
+        sm.add_widget(intro)
+        menu.build()
+        sm.add_widget(menu)
+        play.build()
+        sm.add_widget(play)
         sm.current = 'Intro'
         return sm
 

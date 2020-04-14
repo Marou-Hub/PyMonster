@@ -6,7 +6,7 @@ import numpy as np
 
 
 conversion = {
-    (0, 0, 0): 1,  # wall in black
+    (0, 0, 0): 1,  # horizontal wall in black
     (255, 0, 0): 2,  # charge in red
     (0, 255, 0): 3,  # win in green
 }
