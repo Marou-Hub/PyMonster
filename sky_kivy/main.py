@@ -20,6 +20,7 @@ from kivy.clock import Clock
 from kivy.core.window import Window, platform
 from os.path import join, dirname, isfile
 import numpy as np
+from json import load, dump
 
 # KIVY LAUNCHER uses KIVY 1.9.1 and PYTHON 2.7.2 !!
 # Things that DO NOT WORK with KIVY LAUNCHER (specific python 3)
@@ -33,16 +34,27 @@ import numpy as np
 curdir = dirname(__file__)
 EPSILON = 0.01
 WALL = 1
-CHARGE = 2
-VICTORY = 3
+CHARGE = 50
+VICTORY = 100
 WALL_N = 1000
 WALL_S = 1001
 WALL_W = 1002
 WALL_E = 1003
 sm = ScreenManager()
-# settings
-cur_level = 1
-max_level = 20
+# maps
+with open(join(curdir, 'maps', 'maps.json')) as fd:
+    maps = load(fd)
+prefile = join(curdir, 'prefs.json')
+with open(prefile) as fd:
+    prefs = load(fd)
+
+
+def unlock(level):
+    current = prefs['current']
+    if level > current:
+        prefs['current'] = level
+        with open(prefile, 'w') as fd:
+            dump(prefs, fd)
 
 
 #############################################################################################
@@ -113,7 +125,8 @@ class Intro(Screen):
 class TreeViewButton(BoxLayout, TreeViewNode):
     def build(self, level, lock):
         self.level = level
-        self.add_widget(Label(text='[color=ff0000][size=60]Level ' + str(level) + '[/size][/color]', markup=True, halign='center'))
+        desc = maps[level - 1]['desc']
+        self.add_widget(Label(text='[color=ff0000][size=50]Level ' + str(level) + '[/size][/color]\n[color=ffffff][size=20]' + desc + '[/size][/color]', markup=True, halign='center'))
         self.add_widget(Image(source=join(curdir, 'images', 'Lock.png' if lock else 'Play.png')))
         if lock:
             self.disabled = True
@@ -139,14 +152,27 @@ class Menu(Screen):
         layout.add_widget(buttons)
         tv = TreeView(hide_root=True, size_hint_y=None)
         tv.bind(minimum_height=tv.setter('height'))
-        for i in range(1, max_level):
+        cur_level = prefs['current']
+        for i in range(len(maps)):
             tvb = TreeViewButton()
-            tvb.build(i, i > cur_level)
+            level = i + 1
+            tvb.build(level, level > cur_level)
             tv.add_node(tvb)
+        self.tv = tv
         sv = ScrollView(bar_width=50, do_scroll_x=False)
         sv.add_widget(tv)
         layout.add_widget(sv)
         self.add_widget(layout)
+
+    def rebuild(self):
+        cur_level = prefs['current']
+        for node in self.tv._root.nodes:
+            self.tv.remove_node(node)
+        for i in range(len(maps)):
+            tvb = TreeViewButton()
+            level = i + 1
+            tvb.build(level, level > cur_level)
+            self.tv.add_node(tvb)
 
 
 #############################################################################################
@@ -359,6 +385,8 @@ class Playground(Screen):
             pixel = self.map[x, y]
             if pixel == CHARGE:
                 got[CHARGE] = True
+            elif pixel == VICTORY:
+                got[VICTORY] = True
         return got
 
     def step(self, dt):
@@ -369,6 +397,12 @@ class Playground(Screen):
             self.circle.step(dt)
             # Detect if charged (near floor for now)
             got = self.scan_map(last_pos, self.circle.pos, self.circle.radius)
+            if VICTORY in got:
+                self.event.cancel()
+                sm.current = 'Intro'
+                unlock(self.level + 1)
+                menu.rebuild()
+                return
             if CHARGE in got:
                 if not self.charged:
                     complete = self.circle.increase_charge(dt)

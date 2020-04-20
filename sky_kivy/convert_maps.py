@@ -6,9 +6,10 @@ import numpy as np
 
 
 conversion = {
-    (0, 0, 0): 1,  # horizontal wall in black
-    (255, 0, 0): 2,  # charge in red
-    (0, 255, 0): 3,  # win in green
+    (0, 0, 0): 1,  # horizontal rock floor in black
+    (128, 128, 128): 3,  # horizontal ica floor in grey
+    (255, 0, 0): 50,  # charge in red
+    (0, 255, 0): 100,  # win in green
 }
 mapdir = join(dirname(__file__), 'maps')
 pattern = "^map(\\d+).png"
