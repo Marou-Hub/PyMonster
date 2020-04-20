@@ -177,11 +177,26 @@ class Circle(Rectangle):
     speed_max = 300.
     damper = 400
     force_bounce = 800
+    charge = 0
 
     def build(self, x, y):
         self.radius = Window.size[0] / 30
         self.pos = (x - self.radius, y - self.radius)
         self.size = (self.radius * 2, self.radius * 2)
+
+    def increase_charge(self, dt):
+        self.charge += 500 * dt  # complete charge in 1 sec
+        if self.charge >= 100:
+            self.charge = 100
+            return True
+        return False
+
+    def decrease_charge(self, dt):
+        self.charge -= 500 * dt
+        if self.charge <= 0:
+            self.charge = 0
+            return True
+        return False
 
     def damper_force(self, dt):
         damper = self.damper * dt
@@ -262,6 +277,7 @@ class Playground(Screen):
     circle = ObjectProperty(None, allownone=True)
     color = ObjectProperty(None, allownone=True)
     charged = BooleanProperty(False)
+    charging = BooleanProperty(False)
 
     def build(self):
         self.name = 'Playground'  # On donne un nom a l'ecran
@@ -304,24 +320,44 @@ class Playground(Screen):
         x = int((x2 + radius) * texture_size[0] // image_size[0])
         oriy = int(y1 * texture_size[1] // image_size[1])
         r = int(2 * radius * texture_size[1] // image_size[1])
-        if not up:
-            oriy += r
         # dx = int((dx + radius) * texture_size[0] // image_size[0])
         dy = int(dy * texture_size[1] // image_size[1])
         got = {}
-        scany = dy + r if up else max(abs(dy), r)
+        # scan collisions
+        if up:
+            for i in range(max(dy, 1)):
+                y = oriy + r + i
+                if y > texture_size[1]:
+                    continue
+                pixel = self.map[x, y]
+                if pixel == 0:
+                    continue
+                if pixel == WALL:
+                    wall_y = y * image_size[1] // texture_size[1]
+                    if wall_y < (y2 + 2 * radius):
+                        got[WALL_N] = wall_y
+                        break
+        else:
+            for i in range(max(abs(dy), 1)):
+                y = oriy - i - 1
+                if y < 0:
+                    continue
+                pixel = self.map[x, y]
+                if pixel == 0:
+                    continue
+                if pixel == WALL:
+                    wall_y = (y + 1) * image_size[1] // texture_size[1]
+                    if wall_y > y2:
+                        got[WALL_S] = wall_y
+                        break
+        # scan zone effects
+        scany = r + abs(dy)
+        if not up:
+            oriy += dy
         for i in range(scany):
-            y = oriy + i if up else oriy - i - 1
+            y = oriy + i
             pixel = self.map[x, y]
-            if pixel == 0:
-                continue
-            if pixel == WALL:
-                if up:
-                    if WALL_N not in got:
-                        got[WALL_N] = y * image_size[1] // texture_size[1]
-                elif WALL_S not in got:
-                    got[WALL_S] = (y + 1) * image_size[1] // texture_size[1]
-            elif pixel == CHARGE:
+            if pixel == CHARGE:
                 got[CHARGE] = True
         return got
 
@@ -335,11 +371,15 @@ class Playground(Screen):
             got = self.scan_map(last_pos, self.circle.pos, self.circle.radius)
             if CHARGE in got:
                 if not self.charged:
-                    self.color.v = 1
-                    self.charged = True
-            elif self.charged:
-                self.color.v = .2
-                self.charged = False
+                    complete = self.circle.increase_charge(dt)
+                    self.color.v = max(.2, self.circle.charge / 100)
+                    self.charging = not complete
+                    self.charged = complete
+            elif self.charged or self.charging:
+                complete = self.circle.decrease_charge(dt)
+                self.color.v = max(.2, self.circle.charge / 100)
+                self.charging = not complete
+                self.charged = not complete
             # compute collisions
             self.circle.collide(last_pos, got)
 
