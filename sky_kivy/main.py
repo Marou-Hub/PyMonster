@@ -5,7 +5,7 @@ import kivy
 kivy.require('1.9.1')
 
 from kivy.graphics import Color, Rectangle
-from kivy.properties import ObjectProperty, BooleanProperty
+from kivy.properties import ObjectProperty, NumericProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.treeview import TreeView,  TreeViewNode
@@ -212,26 +212,11 @@ class Circle(Rectangle):
     speed_max = 300.
     damper = 400
     force_bounce = 800
-    charge = 0
 
     def build(self, x, y):
         self.radius = Window.size[0] / 30
         self.pos = (x - self.radius, y - self.radius)
         self.size = (self.radius * 2, self.radius * 2)
-
-    def increase_charge(self, dt):
-        self.charge += 500 * dt  # complete charge in 1 sec
-        if self.charge >= 100:
-            self.charge = 100
-            return True
-        return False
-
-    def decrease_charge(self, dt):
-        self.charge -= 500 * dt
-        if self.charge <= 0:
-            self.charge = 0
-            return True
-        return False
 
     def damper_force(self, dt):
         damper = self.damper * dt
@@ -254,7 +239,7 @@ class Circle(Rectangle):
         self.speed_x = damper_x * self.speed_x
         self.speed_y = damper_y * self.speed_y
 
-    def bounce(self, target_x, target_y):
+    def bounce(self, target_x, target_y, charge):
         (x, y) = self.pos
         x += self.radius
         y += self.radius
@@ -265,10 +250,10 @@ class Circle(Rectangle):
         else:
             slope = dy / (dx + dy)
         if target_x > x:
-            self.force_x = (1 - slope) * self.force_bounce
+            self.force_x = (1 - slope) * self.force_bounce * (charge + .1)
         else:
-            self.force_x = -(1 - slope) * self.force_bounce
-        self.force_y = slope * self.force_bounce
+            self.force_x = -(1 - slope) * self.force_bounce * (charge + .1)
+        self.force_y = slope * self.force_bounce * charge
         # impulse
         self.update_speed(1)
 
@@ -311,8 +296,7 @@ class Playground(Screen):
 
     circle = ObjectProperty(None, allownone=True)
     color = ObjectProperty(None, allownone=True)
-    charged = BooleanProperty(False)
-    charging = BooleanProperty(False)
+    charge = NumericProperty(0)
 
     def build(self, level):
         self.name = 'Playground'  # On donne un nom a l'ecran
@@ -412,16 +396,16 @@ class Playground(Screen):
                 menu.rebuild()
                 return
             if CHARGE in got:
-                if not self.charged:
-                    complete = self.circle.increase_charge(dt)
-                    self.color.v = max(.2, self.circle.charge / 100)
-                    self.charging = not complete
-                    self.charged = complete
-            elif self.charged or self.charging:
-                complete = self.circle.decrease_charge(dt)
-                self.color.v = max(.2, self.circle.charge / 100)
-                self.charging = not complete
-                self.charged = not complete
+                if self.charge < 1:
+                    self.charge += 2 * dt  # complete charge in 1/2 sec
+                    if self.charge > 1:
+                        self.charge = 1
+                    self.color.v = .2 + (.8 * self.charge)
+            elif self.charge > 0:
+                self.charge -= 2 * dt  # complete charge in 1 sec
+                if self.charge < 0:
+                    self.charge = 0
+                self.color.v = .2 + (.8 * self.charge)
             # compute collisions
             self.circle.collide(last_pos, got)
 
@@ -436,8 +420,8 @@ class Playground(Screen):
     def on_touch_down(self, touch):
         if self.circle is None:
             self.add_circle(touch.x, touch.y)
-        elif self.charged:
-            self.circle.bounce(touch.x, touch.y)
+        else:
+            self.circle.bounce(touch.x, touch.y, self.charge)
 
 
 #############################################################################################
