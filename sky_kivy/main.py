@@ -50,11 +50,13 @@ with open(prefile) as fd:
 
 
 def unlock(level):
+    save_progress = False  # temp
     current = prefs['current']
     if level > current:
         prefs['current'] = level
-        with open(prefile, 'w') as fd:
-            dump(prefs, fd)
+        if save_progress:
+            with open(prefile, 'w') as fd:
+                dump(prefs, fd)
 
 
 #############################################################################################
@@ -124,17 +126,26 @@ class Intro(Screen):
 #############################################################################################
 class TreeViewButton(BoxLayout, TreeViewNode):
     def build(self, level, lock):
-        self.level = level
+        self.level_no = level  # level field already exists in TreeViewNode
         desc = maps[level - 1]['desc']
         self.add_widget(Label(text='[color=ff0000][size=50]Level ' + str(level) + '[/size][/color]\n[color=ffffff][size=20]' + desc + '[/size][/color]', markup=True, halign='center'))
-        self.add_widget(Image(source=join(curdir, 'images', 'Lock.png' if lock else 'Play.png')))
+        self.im = Image(source=join(curdir, 'images', 'Lock.png' if lock else 'Play.png'))
+        self.add_widget(self.im)
         if lock:
             self.disabled = True
+
+    def rebuild(self, lock):
+        self.is_selected = False
+        if not lock and self.disabled:
+            self.im.source = join(curdir, 'images', 'Play.png')
+            self.disabled = False
 
     def on_touch_down(self, touch):
         super(TreeViewButton, self).on_touch_down(touch)
         # switch to game screen
-        play.load(self.level)
+        play = Playground()
+        play.build(self.level_no)
+        sm.add_widget(play)
         sm.current = 'Playground'
 
 
@@ -153,12 +164,13 @@ class Menu(Screen):
         tv = TreeView(hide_root=True, size_hint_y=None)
         tv.bind(minimum_height=tv.setter('height'))
         cur_level = prefs['current']
+        self.tvs = []
         for i in range(len(maps)):
             tvb = TreeViewButton()
             level = i + 1
             tvb.build(level, level > cur_level)
+            self.tvs.append(tvb)
             tv.add_node(tvb)
-        self.tv = tv
         sv = ScrollView(bar_width=50, do_scroll_x=False)
         sv.add_widget(tv)
         layout.add_widget(sv)
@@ -166,13 +178,10 @@ class Menu(Screen):
 
     def rebuild(self):
         cur_level = prefs['current']
-        for node in self.tv._root.nodes:
-            self.tv.remove_node(node)
-        for i in range(len(maps)):
-            tvb = TreeViewButton()
+        for i in range(len(self.tvs)):
+            tvb = self.tvs[i]
             level = i + 1
-            tvb.build(level, level > cur_level)
-            self.tv.add_node(tvb)
+            tvb.rebuild(level > cur_level)
 
 
 #############################################################################################
@@ -305,7 +314,7 @@ class Playground(Screen):
     charged = BooleanProperty(False)
     charging = BooleanProperty(False)
 
-    def build(self):
+    def build(self, level):
         self.name = 'Playground'  # On donne un nom a l'ecran
         self.map = None
         self.background = None
@@ -314,10 +323,6 @@ class Playground(Screen):
         widget.texture = Image(source=join(curdir, 'images', 'circle.png'), mipmap=True).texture
         self.add_widget(widget)
         self.event = None
-
-    def load(self, level):
-        if self.background is not None:
-            self.remove_widget(self.background)
         # map
         self.level = level
         self.map = np.load(join(curdir, 'maps', 'map' + str(level) + '.npy'))
@@ -353,7 +358,7 @@ class Playground(Screen):
         if up:
             for i in range(max(dy, 1)):
                 y = oriy + r + i
-                if y > texture_size[1]:
+                if y > texture_size[1] - 1:
                     continue
                 pixel = self.map[x, y]
                 if pixel == 0:
@@ -382,6 +387,8 @@ class Playground(Screen):
             oriy += dy
         for i in range(scany):
             y = oriy + i
+            if y < 0 or y > texture_size[1] - 1:
+                continue
             pixel = self.map[x, y]
             if pixel == CHARGE:
                 got[CHARGE] = True
@@ -401,6 +408,7 @@ class Playground(Screen):
                 self.event.cancel()
                 sm.current = 'Intro'
                 unlock(self.level + 1)
+                sm.remove_widget(self)
                 menu.rebuild()
                 return
             if CHARGE in got:
@@ -437,7 +445,6 @@ class Playground(Screen):
 #############################################################################################
 intro = Intro()
 menu = Menu()
-play = Playground()
 
 
 class SkyKivyApp(App):
@@ -450,8 +457,6 @@ class SkyKivyApp(App):
         sm.add_widget(intro)
         menu.build()
         sm.add_widget(menu)
-        play.build()
-        sm.add_widget(play)
         sm.current = 'Intro'
         return sm
 
