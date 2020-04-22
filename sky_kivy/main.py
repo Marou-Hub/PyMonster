@@ -5,7 +5,7 @@ import kivy
 kivy.require('1.9.1')
 
 from kivy.graphics import Color, Rectangle
-from kivy.properties import ObjectProperty, NumericProperty
+from kivy.properties import ObjectProperty, NumericProperty, BooleanProperty, ListProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.treeview import TreeView,  TreeViewNode
@@ -45,6 +45,11 @@ WALL_N = 1000
 WALL_S = 1001
 WALL_W = 1002
 WALL_E = 1003
+FLOORS = {
+    FLOOR_ROCK: (0.5, -0.4),
+    FLOOR_MUD: (0.3, -0.3),
+    FLOOR_ICE: (0.9, -0.7),
+}
 sm = ScreenManager()
 # maps
 with open(join(curdir, 'maps', 'maps.json')) as fd:
@@ -240,7 +245,8 @@ class Circle(Rectangle):
         elif self.speed_y < -self.speed_max:
             self.speed_y = -self.speed_max
 
-    def choc(self, damper_x, damper_y):
+    def choc(self, damper):
+        (damper_x, damper_y) = damper
         self.speed_x = damper_x * self.speed_x
         self.speed_y = damper_y * self.speed_y
 
@@ -276,24 +282,25 @@ class Circle(Rectangle):
         _y = last_pos[1] + self.radius
         # wall collision
         if WALL_N in got:
-            y = got[WALL_N] - self.radius * 2
-            self.choc(0.9, -0.6)
+            (y, pixel) = got[WALL_N]
+            y -= self.radius * 2
+            self.choc(FLOORS[pixel])
         elif WALL_S in got:
-            y = got[WALL_S]
-            self.choc(0.9, -0.6)
+            (y, pixel) = got[WALL_S]
+            self.choc(FLOORS[pixel])
         # border collision
         if y < 0:
             y = 0
-            self.choc(0.9, -0.6)
+            self.choc((0.9, -0.6))
         elif y + self.radius * 2 > Window.size[1]:
             y = Window.size[1] - self.radius * 2
-            self.choc(0.9, -0.6)
+            self.choc((0.9, -0.6))
         if x < 0:
             x = 0
-            self.choc(-0.7, 0.9)
+            self.choc((-0.7, 0.9))
         elif x + self.radius * 2 > Window.size[0]:
             x = Window.size[0] - self.radius * 2
-            self.choc(-0.7, 0.9)
+            self.choc((-0.7, 0.9))
         self.pos = (x, y)
 
 
@@ -302,6 +309,8 @@ class Playground(Screen):
     circle = ObjectProperty(None, allownone=True)
     color = ObjectProperty(None, allownone=True)
     charge = NumericProperty(0)
+    charged_low = BooleanProperty(False)
+    coins = ListProperty()
 
     def build(self, level):
         self.name = 'Playground'  # On donne un nom a l'ecran
@@ -367,10 +376,10 @@ class Playground(Screen):
                 pixel = self.map[x, y]
                 if pixel == 0:
                     continue
-                if pixel == FLOOR_ROCK:
+                if pixel in FLOORS:
                     wall_y = y * image_size[1] // texture_size[1]
                     if wall_y < (y2 + 2 * radius):
-                        got[WALL_N] = wall_y
+                        got[WALL_N] = (wall_y, pixel)
                         break
         else:
             for i in range(max(abs(dy), 1)):
@@ -380,10 +389,10 @@ class Playground(Screen):
                 pixel = self.map[x, y]
                 if pixel == 0:
                     continue
-                if pixel == FLOOR_ROCK:
+                if pixel in FLOORS:
                     wall_y = (y + 1) * image_size[1] // texture_size[1]
                     if wall_y > y2:
-                        got[WALL_S] = wall_y
+                        got[WALL_S] = (wall_y, pixel)
                         break
         # scan zone effects
         scany = r + abs(dy)
@@ -396,6 +405,8 @@ class Playground(Screen):
             pixel = self.map[x, y]
             if pixel == CHARGE:
                 got[CHARGE] = True
+            elif pixel == CHARGE_LOW:
+                got[CHARGE_LOW] = True
             elif pixel == VICTORY:
                 got[VICTORY] = True
         return got
@@ -422,12 +433,21 @@ class Playground(Screen):
                         self.charge = 1
                     self.color.v = .2 + (.8 * self.charge)
             elif self.charge > 0:
-                self.charge -= 2 * dt  # complete charge in 1 sec
+                self.charge -= 2 * dt  # complete charge in 1/2 sec
                 if self.charge < 0:
                     self.charge = 0
                 self.color.v = .2 + (.8 * self.charge)
+            self.charged_low = CHARGE_LOW in got
             # compute collisions
             self.circle.collide(last_pos, got)
+            # coin collision
+            for coin in self.coins:
+                pos = coin.pos
+                dist = ((pos[0]-self.circle.pos[0])**2 + (pos[1]-self.circle.pos[1])**2)**0.5
+                if dist < self.circle.radius:
+                    self.coins.remove(coin)
+                    self.remove_widget(coin)
+                    break
 
     def add_circle(self, x, y):
         widget = self.children[0]
@@ -440,12 +460,13 @@ class Playground(Screen):
     def add_gold(self, x, y, radius):
         pos = (x - radius, y - radius)
         coin = Image(source=join(curdir, 'images', 'coin.zip'), anim_delay=0.1, pos=pos, size_hint=(0.06, 0.06))
+        self.coins.append(coin)
         self.add_widget(coin, 1)
 
     def on_touch_down(self, touch):
         if self.circle is None:
             self.add_circle(touch.x, touch.y)
-        else:
+        elif self.charged_low or self.charge > 0:
             self.circle.bounce(touch.x, touch.y, self.charge)
 
 
