@@ -33,9 +33,14 @@ from json import load, dump
 
 curdir = dirname(__file__)
 EPSILON = 0.01
-WALL = 1
+FLOOR_ROCK = 1
+FLOOR_MUD = 2
+FLOOR_ICE = 3
 CHARGE = 50
+CHARGE_LOW = 51
 VICTORY = 100
+START = 200
+GOLD = 201
 WALL_N = 1000
 WALL_S = 1001
 WALL_W = 1002
@@ -319,9 +324,24 @@ class Playground(Screen):
 
     def on_enter(self, *args):
         self.event = Clock.schedule_interval(self.step, 1 / 30.)
+        # object placements
+        self.scan_objects()
 
     def on_leave(self, *args):
         self.event.cancel()
+
+    def scan_objects(self):
+        texture_size = self.map.shape
+        radius = int(Window.size[0] / 30)
+        for y in range(texture_size[1]):
+            for x in range(texture_size[0]):
+                pixel = self.map[x, y]
+                if pixel == 0:
+                    continue
+                if pixel == START:
+                    self.add_circle(x * Window.size[0] // texture_size[0], y * Window.size[1] // texture_size[1])
+                elif pixel == GOLD:
+                    self.add_gold(x * Window.size[0] // texture_size[0], y * Window.size[1] // texture_size[1], radius)
 
     def scan_map(self, last_pos, new_pos, radius):
         (x1, y1) = last_pos
@@ -347,7 +367,7 @@ class Playground(Screen):
                 pixel = self.map[x, y]
                 if pixel == 0:
                     continue
-                if pixel == WALL:
+                if pixel == FLOOR_ROCK:
                     wall_y = y * image_size[1] // texture_size[1]
                     if wall_y < (y2 + 2 * radius):
                         got[WALL_N] = wall_y
@@ -360,7 +380,7 @@ class Playground(Screen):
                 pixel = self.map[x, y]
                 if pixel == 0:
                     continue
-                if pixel == WALL:
+                if pixel == FLOOR_ROCK:
                     wall_y = (y + 1) * image_size[1] // texture_size[1]
                     if wall_y > y2:
                         got[WALL_S] = wall_y
@@ -416,6 +436,11 @@ class Playground(Screen):
             circle = Circle(texture=widget.texture)
             circle.build(x, y)
         self.circle = circle
+
+    def add_gold(self, x, y, radius):
+        pos = (x - radius, y - radius)
+        coin = Image(source=join(curdir, 'images', 'coin.zip'), anim_delay=0.1, pos=pos, size_hint=(0.06, 0.06))
+        self.add_widget(coin, 1)
 
     def on_touch_down(self, touch):
         if self.circle is None:

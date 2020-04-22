@@ -4,12 +4,22 @@ from os import listdir
 import re
 import numpy as np
 
+FLOOR_ROCK = 1
+FLOOR_MUD = 2
+FLOOR_ICE = 3
+CHARGE = 50
+CHARGE_LOW = 51
+VICTORY = 100
+START = 200
+GOLD = 201
 
 conversion = {
-    (0, 0, 0): 1,  # horizontal rock floor in black
-    (128, 128, 128): 3,  # horizontal ica floor in grey
-    (255, 0, 0): 50,  # charge in red
-    (0, 255, 0): 100,  # win in green
+    (0, 0, 0): FLOOR_ROCK,  # horizontal rock floor in black
+    (128, 128, 128): FLOOR_ICE,  # horizontal ice floor in grey
+    (255, 0, 0): CHARGE,  # charge in red
+    (0, 255, 0): VICTORY,  # win in green
+    (0, 0, 255): START,  # start position in blue
+    (255, 255, 0): GOLD,  # start position in yellow
 }
 mapdir = join(dirname(__file__), 'maps')
 pattern = "^map(\\d+).png"
@@ -32,6 +42,8 @@ def convert_map(file, level):
             pix = im.getpixel((x, height - y - 1))
             if pix in conversion:
                 ar[x, y] = conversion[pix]
+            elif y == 0 or (0 < ar[x, y - 1] < 10):
+                ar[x, y] = CHARGE_LOW  # low charge above naked floor
     # save map
     np.save(join(mapdir, 'map'+str(level)), ar)
 
