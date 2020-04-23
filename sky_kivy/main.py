@@ -59,8 +59,9 @@ with open(prefile) as fd:
     prefs = load(fd)
 
 
-def unlock(level):
+def unlock(level, score):
     save_progress = False  # temp
+    prefs['coins'] += score
     current = prefs['current']
     if level > current:
         prefs['current'] = level
@@ -311,15 +312,22 @@ class Playground(Screen):
     charge = NumericProperty(0)
     charged_low = BooleanProperty(False)
     coins = ListProperty()
+    time = NumericProperty(0)
+    score = NumericProperty(0)
 
     def build(self, level):
         self.name = 'Playground'  # On donne un nom a l'ecran
         self.map = None
         self.background = None
+        # score labels
+        self.score_label = Label(text='[color=ffd800][size=20]Coins: 0[/size][/color]', markup=True, halign='left', size_hint=(.25, .15), pos_hint={'x': 0, 'y': .91})
+        self.add_widget(self.score_label)
+        self.time_label = Label(text='[color=ffd800][size=20]Time: 0[/size][/color]', markup=True, halign='left', size_hint=(.25, .15), pos_hint={'x': .75, 'y': .91})
+        self.add_widget(self.time_label)
         # custom widget
-        widget = Widget()
-        widget.texture = Image(source=join(curdir, 'images', 'circle.png'), mipmap=True).texture
-        self.add_widget(widget)
+        self.widget = Widget()
+        self.widget.texture = Image(source=join(curdir, 'images', 'circle.png'), mipmap=True).texture
+        self.add_widget(self.widget, 2)
         self.event = None
         # map
         self.level = level
@@ -329,15 +337,22 @@ class Playground(Screen):
         if not isfile(image_file):
             image_file = join(curdir, 'maps', 'map' + str(level) + '.png')
         self.background = Image(source=image_file, allow_stretch=True, keep_ratio=False)
-        self.add_widget(self.background, 1)
+        self.add_widget(self.background, 3)
 
     def on_enter(self, *args):
         self.event = Clock.schedule_interval(self.step, 1 / 30.)
         # object placements
         self.scan_objects()
+        self.timer = 0.
 
     def on_leave(self, *args):
         self.event.cancel()
+
+    def on_score(self, instance, value):
+        self.score_label.text = '[color=ffd800][size=20]Coins: ' + str(value) + '[/size][/color]'
+
+    def on_time(self, instance, value):
+        self.time_label.text = '[color=ffd800][size=20]Time: ' + str(value) + '[/size][/color]'
 
     def scan_objects(self):
         texture_size = self.map.shape
@@ -412,6 +427,10 @@ class Playground(Screen):
         return got
 
     def step(self, dt):
+        # Update timer
+        self.timer += dt
+        if int(self.timer) > self.time:
+            self.time = int(self.timer)
         # Update animations
         if self.circle is not None:
             # Apply mvt + gravity
@@ -422,7 +441,7 @@ class Playground(Screen):
             if VICTORY in got:
                 self.event.cancel()
                 sm.current = 'Intro'
-                unlock(self.level + 1)
+                unlock(self.level + 1, self.score)
                 sm.remove_widget(self)
                 menu.rebuild()
                 return
@@ -447,13 +466,13 @@ class Playground(Screen):
                 if dist < self.circle.radius:
                     self.coins.remove(coin)
                     self.remove_widget(coin)
+                    self.score += 1
                     break
 
     def add_circle(self, x, y):
-        widget = self.children[0]
-        with widget.canvas.before:
+        with self.widget.canvas.before:
             self.color = Color(.95, .7, .2, mode='hsv')
-            circle = Circle(texture=widget.texture)
+            circle = Circle(texture=self.widget.texture)
             circle.build(x, y)
         self.circle = circle
 
@@ -461,7 +480,7 @@ class Playground(Screen):
         pos = (x - radius, y - radius)
         coin = Image(source=join(curdir, 'images', 'coin.zip'), anim_delay=0.1, pos=pos, size_hint=(0.06, 0.06))
         self.coins.append(coin)
-        self.add_widget(coin, 1)
+        self.add_widget(coin, 3)
 
     def on_touch_down(self, touch):
         if self.circle is None:
