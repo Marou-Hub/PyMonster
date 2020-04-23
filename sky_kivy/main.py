@@ -502,6 +502,7 @@ class SkyKivyApp(App):
     icon = 'icon.png'
 
     def build(self):
+        Window.bind(on_keyboard=self.on_keyboard)
         intro.build()
         sm.add_widget(intro)
         menu.build()
@@ -509,8 +510,15 @@ class SkyKivyApp(App):
         sm.current = 'Intro'
         return sm
 
-    def on_pause(self):
-        return True
+    def on_keyboard(self, window, keycode1, keycode2, text, modifiers):
+        if keycode1 in [27, 1001]:
+            if sm.current == 'Menu':
+                sm.current = 'Intro'
+                return True
+            if sm.current == 'Playground':
+                sm.current = 'Menu'
+                return True
+        return False
 
 
 if __name__ in ('__main__', '__android__'):
