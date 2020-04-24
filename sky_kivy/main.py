@@ -32,6 +32,7 @@ from json import load, dump
 #############################################################################################
 
 curdir = dirname(__file__)
+cloud_image = Image(source=join(curdir, 'images', 'cloudysky.png'))
 EPSILON = 0.01
 FLOOR_ROCK = 1
 FLOOR_MUD = 2
@@ -48,7 +49,7 @@ WALL_E = 1003
 FLOORS = {
     FLOOR_ROCK: (0.5, -0.4),
     FLOOR_MUD: (0.3, -0.3),
-    FLOOR_ICE: (0.9, -0.7),
+    FLOOR_ICE: (0.5, -0.6),
 }
 sm = ScreenManager()
 # maps
@@ -78,7 +79,6 @@ class Intro(Screen):
         self.name = 'Intro'  # On donne un nom a l'ecran
         layout = FloatLayout()
         # Une image de fond:
-        cloud_image = Image(source=join(curdir, 'images', 'cloudysky.png'))
         self.cloud_texture = cloud_image.texture
         self.cloud_texture.wrap = 'repeat'
         self.bgImage = Image(texture=self.cloud_texture, allow_stretch=True, keep_ratio=False)
@@ -322,7 +322,7 @@ class Playground(Screen):
         # score labels
         self.score_label = Label(text='[color=ffd800][size=20]Coins: 0[/size][/color]', markup=True, halign='left', size_hint=(.25, .15), pos_hint={'x': 0, 'y': .91})
         self.add_widget(self.score_label)
-        self.time_label = Label(text='[color=ffd800][size=20]Time: 0[/size][/color]', markup=True, halign='left', size_hint=(.25, .15), pos_hint={'x': .75, 'y': .91})
+        self.time_label = Label(text='[color=ffd800][size=20]Time: 0[/size][/color]', markup=True, halign='left', size_hint=(.25, .15), pos_hint={'x': .5, 'y': .91})
         self.add_widget(self.time_label)
         # custom widget
         self.widget = Widget()
@@ -347,6 +347,7 @@ class Playground(Screen):
 
     def on_leave(self, *args):
         self.event.cancel()
+        sm.remove_widget(self)
 
     def on_score(self, instance, value):
         self.score_label.text = '[color=ffd800][size=20]Coins: ' + str(value) + '[/size][/color]'
@@ -440,9 +441,9 @@ class Playground(Screen):
             got = self.scan_map(last_pos, self.circle.pos, self.circle.radius)
             if VICTORY in got:
                 self.event.cancel()
-                sm.current = 'Intro'
                 unlock(self.level + 1, self.score)
-                sm.remove_widget(self)
+                victory.load(self.time, self.score)
+                sm.current = 'Victory'
                 menu.rebuild()
                 return
             if CHARGE in got:
@@ -459,11 +460,17 @@ class Playground(Screen):
             self.charged_low = CHARGE_LOW in got
             # compute collisions
             self.circle.collide(last_pos, got)
-            # coin collision
+            # coin collision: distance between circle and coin centers
+            (circle_x, circle_y) = self.circle.pos
+            circle_x += self.circle.radius
+            circle_y += self.circle.radius
+            hit = self.circle.radius * 1.25
             for coin in self.coins:
-                pos = coin.pos
-                dist = ((pos[0]-self.circle.pos[0])**2 + (pos[1]-self.circle.pos[1])**2)**0.5
-                if dist < self.circle.radius:
+                (x, y) = coin.pos
+                x += coin.size[0] / 2
+                y += coin.size[1] / 2
+                dist = ((x-circle_x)**2 + (y-circle_y)**2)**0.5
+                if dist < hit:
                     self.coins.remove(coin)
                     self.remove_widget(coin)
                     self.score += 1
@@ -490,10 +497,65 @@ class Playground(Screen):
 
 
 #############################################################################################
+# Victory
+#############################################################################################
+class Victory(Screen):
+    time = NumericProperty(0)
+    score = NumericProperty(0)
+    total = NumericProperty(0)
+
+    def build(self):
+        self.name = 'Victory'  # On donne un nom a l'ecran
+        layout = FloatLayout()
+        # Une image de fond:
+        self.cloud_texture = cloud_image.texture
+        self.cloud_texture.wrap = 'repeat'
+        self.bgImage = Image(texture=self.cloud_texture, allow_stretch=True, keep_ratio=False)
+        layout.add_widget(self.bgImage)
+        self.speed = -0.1
+        # labels
+        layout.add_widget(Image(source=join(curdir, 'images', 'treasure_chest.png'), size_hint=(.5, .5), pos_hint={'x': .25, 'y': .5}))
+        self.time_label = Label(text='0', markup=True, halign='left', size_hint=(.25, .15), pos_hint={'x': .25, 'y': .4})
+        layout.add_widget(self.time_label)
+        self.score_label = Label(text='0', markup=True, halign='left', size_hint=(.25, .15), pos_hint={'x': .25, 'y': .3})
+        layout.add_widget(self.score_label)
+        layout.add_widget(Image(source=join(curdir, 'images', 'coin.zip'), anim_delay=0.1, size_hint=(.2, .2), pos_hint={'x': .75, 'y': .22}))
+        self.total_label = Label(text='0', markup=True, halign='center', size_hint=(.25, .15), pos_hint={'x': .25, 'y': .2})
+        layout.add_widget(self.total_label)
+        self.add_widget(layout)
+        self.event = None
+
+    def load(self, time, score):
+        self.score_label.text = '[color=ffd800][size=40sp]Coins gained: ' + str(score) + '[/size][/color]'
+        self.time_label.text = '[color=ffd800][size=40sp]Time elapsed: ' + str(time) + '[/size][/color]'
+        self.total_label.text = '[color=ffd800][size=40sp]Total Coins: ' + str(prefs['coins']) + '[/size][/color]'
+
+
+    def on_enter(self, *args):
+        self.event = Clock.schedule_interval(self.scroll_textures, 1 / 30.)
+
+    def on_leave(self, *args):
+        self.event.cancel()
+
+    def scroll_textures(self, time_passed):
+        # Update the uvpos of the texture
+        self.cloud_texture.uvpos = (self.cloud_texture.uvpos[0], (self.cloud_texture.uvpos[1] + time_passed * self.speed) % self.width)
+
+        # Redraw the texture
+        texture = self.bgImage.property('texture')
+        texture.dispatch(self.bgImage)
+
+    def on_touch_up(self, touch):
+        # switch to game screen
+        sm.current = 'Menu'
+
+
+#############################################################################################
 # Screen & Application
 #############################################################################################
 intro = Intro()
 menu = Menu()
+victory = Victory()
 
 
 class SkyKivyApp(App):
@@ -507,6 +569,8 @@ class SkyKivyApp(App):
         sm.add_widget(intro)
         menu.build()
         sm.add_widget(menu)
+        victory.build()
+        sm.add_widget(victory)
         sm.current = 'Intro'
         return sm
 
@@ -516,6 +580,9 @@ class SkyKivyApp(App):
                 sm.current = 'Intro'
                 return True
             if sm.current == 'Playground':
+                sm.current = 'Menu'
+                return True
+            if sm.current == 'Victory':
                 sm.current = 'Menu'
                 return True
         return False

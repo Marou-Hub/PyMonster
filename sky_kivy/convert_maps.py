@@ -15,6 +15,7 @@ GOLD = 201
 
 conversion = {
     (0, 0, 0): FLOOR_ROCK,  # horizontal rock floor in black
+    (160, 115, 0): FLOOR_MUD,  # horizontal mud floor in brown
     (128, 128, 128): FLOOR_ICE,  # horizontal ice floor in grey
     (255, 0, 0): CHARGE,  # charge in red
     (0, 255, 0): VICTORY,  # win in green
