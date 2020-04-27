@@ -246,10 +246,16 @@ class Circle(Rectangle):
         elif self.speed_y < -self.speed_max:
             self.speed_y = -self.speed_max
 
-    def choc(self, damper):
+    def choc(self, damper, up):
         (damper_x, damper_y) = damper
         self.speed_x = damper_x * self.speed_x
         self.speed_y = damper_y * self.speed_y
+        if up is not None:
+            self.force_y = 0
+            if up:
+                self.speed_y = -abs(self.speed_y)
+            else:
+                self.speed_y = abs(self.speed_y)
 
     def bounce(self, target_x, target_y, charge):
         (x, y) = self.pos
@@ -280,28 +286,27 @@ class Circle(Rectangle):
 
     def collide(self, last_pos, got):
         (x, y) = self.pos
-        _y = last_pos[1] + self.radius
         # wall collision
         if WALL_N in got:
             (y, pixel) = got[WALL_N]
             y -= self.radius * 2
-            self.choc(FLOORS[pixel])
+            self.choc(FLOORS[pixel], True)
         elif WALL_S in got:
             (y, pixel) = got[WALL_S]
-            self.choc(FLOORS[pixel])
+            self.choc(FLOORS[pixel], False)
         # border collision
         if y < 0:
             y = 0
-            self.choc((0.9, -0.6))
+            self.choc((0.9, -0.6), False)
         elif y + self.radius * 2 > Window.size[1]:
             y = Window.size[1] - self.radius * 2
-            self.choc((0.9, -0.6))
+            self.choc((0.9, -0.6), True)
         if x < 0:
             x = 0
-            self.choc((-0.7, 0.9))
+            self.choc((-0.7, 0.9), None)
         elif x + self.radius * 2 > Window.size[0]:
             x = Window.size[0] - self.radius * 2
-            self.choc((-0.7, 0.9))
+            self.choc((-0.7, 0.9), None)
         self.pos = (x, y)
 
 
@@ -385,7 +390,7 @@ class Playground(Screen):
         got = {}
         # scan collisions
         if up:
-            for i in range(max(dy, 1)):
+            for i in range(max(dy, 2)):
                 y = oriy + r + i
                 if y > texture_size[1] - 1:
                     continue
@@ -398,7 +403,7 @@ class Playground(Screen):
                         got[WALL_N] = (wall_y, pixel)
                         break
         else:
-            for i in range(max(abs(dy), 1)):
+            for i in range(max(abs(dy), 2)):
                 y = oriy - i - 1
                 if y < 0:
                     continue
