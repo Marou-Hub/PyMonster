@@ -27,7 +27,13 @@ pattern = "^map(\\d+).png"
 # tiles
 tile_size = 20
 tiledir = join(dirname(__file__), '..', 'platform_tutorial', 'images', 'tiles')
-tile = Image.open(join(tiledir, 'stoneMid.png')).resize((tile_size, tile_size))
+tiles = {
+    FLOOR_ROCK: Image.open(join(tiledir, 'stoneMid.png')).resize((tile_size, tile_size)),
+    FLOOR_MUD: Image.open(join(tiledir, 'dirtMid.png')).resize((tile_size, tile_size)),
+    FLOOR_ICE: Image.open(join(tiledir, 'snowMid.png')).resize((tile_size, tile_size)),
+    CHARGE: Image.open(join(tiledir, 'ray.png')).resize((tile_size, tile_size)),
+}
+
 
 def convert_maps():
     mapfiles = [f for f in listdir(mapdir) if isfile(join(mapdir, f)) and re.match(pattern, f)]
@@ -49,7 +55,8 @@ def convert_map(file, level):
             if pix in conversion:
                 code = conversion[pix]
                 ar[x, y] = code
-                if code == FLOOR_ROCK:
+                if code in tiles:
+                    tile = tiles[code]
                     back.paste(tile, (x * tile_size, (height - y - 1) * tile_size))
             elif y == 0 or (0 < ar[x, y - 1] < 10):
                 ar[x, y] = CHARGE_LOW  # low charge above naked floor
@@ -59,5 +66,5 @@ def convert_map(file, level):
 
 
 if __name__ == '__main__':
-    #convert_maps()
-    convert_map(join(mapdir, 'map1.png'), 1)
+    convert_maps()
+    #convert_map(join(mapdir, 'map1.png'), 1)

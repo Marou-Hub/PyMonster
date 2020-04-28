@@ -607,7 +607,7 @@ class Victory(Screen):
 intro = Intro()
 menu = Menu()
 victory = Victory()
-debug_mode = True
+debug_mode = False
 
 
 class SkyKivyApp(App):
