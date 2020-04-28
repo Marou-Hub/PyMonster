@@ -284,7 +284,7 @@ class Circle(Rectangle):
             self.damper_force(dt)
             self.pos = (x, y)
 
-    def collide(self, last_pos, got):
+    def collide(self, got):
         (x, y) = self.pos
         # wall collision
         if WALL_N in got:
@@ -319,6 +319,7 @@ class Playground(Screen):
     coins = ListProperty()
     time = NumericProperty(0)
     score = NumericProperty(0)
+    ending = -1
 
     def build(self, level):
         self.name = 'Playground'  # On donne un nom a l'ecran
@@ -363,15 +364,21 @@ class Playground(Screen):
     def scan_objects(self):
         texture_size = self.map.shape
         radius = int(Window.size[0] / 30)
+        portal = False
         for y in range(texture_size[1]):
             for x in range(texture_size[0]):
                 pixel = self.map[x, y]
                 if pixel == 0:
                     continue
-                if pixel == START:
+                if pixel == START and not debug_mode:
                     self.add_circle(x * Window.size[0] // texture_size[0], y * Window.size[1] // texture_size[1])
                 elif pixel == GOLD:
                     self.add_gold(x * Window.size[0] // texture_size[0], y * Window.size[1] // texture_size[1], radius)
+                elif pixel == VICTORY and not portal:
+                    portal = True
+                    self.add_portal(x * Window.size[0] // texture_size[0], y * Window.size[1] // texture_size[1])
+                    if debug_mode:
+                        self.add_circle(x * Window.size[0] // texture_size[0] - 50, y * Window.size[1] // texture_size[1] + 50)
 
     def scan_map(self, last_pos, new_pos, radius):
         (x1, y1) = last_pos
@@ -433,6 +440,9 @@ class Playground(Screen):
         return got
 
     def step(self, dt):
+        if self.ending >= 0:
+            self.on_step_victory(dt)
+            return
         # Update timer
         self.timer += dt
         if int(self.timer) > self.time:
@@ -445,11 +455,7 @@ class Playground(Screen):
             # Detect if charged (near floor for now)
             got = self.scan_map(last_pos, self.circle.pos, self.circle.radius)
             if VICTORY in got:
-                self.event.cancel()
-                unlock(self.level + 1, self.score)
-                victory.load(self.time, self.score)
-                sm.current = 'Victory'
-                menu.rebuild()
+                self.on_start_victory()
                 return
             if CHARGE in got:
                 if self.charge < 1:
@@ -464,7 +470,7 @@ class Playground(Screen):
                 self.color.v = .2 + (.8 * self.charge)
             self.charged_low = CHARGE_LOW in got
             # compute collisions
-            self.circle.collide(last_pos, got)
+            self.circle.collide(got)
             # coin collision: distance between circle and coin centers
             (circle_x, circle_y) = self.circle.pos
             circle_x += self.circle.radius
@@ -494,8 +500,48 @@ class Playground(Screen):
         self.coins.append(coin)
         self.add_widget(coin, 3)
 
+    def add_portal(self, x, y):
+        self.portal = Image(source=join(curdir, 'images', 'portal.gif'), anim_delay=0.1, pos=(x, y), size_hint=(0.12, 0.12))
+        self.add_widget(self.portal, 3)
+
+    def on_start_victory(self):
+        self.ending = 0
+
+    def on_end_victory(self):
+        self.event.cancel()
+        unlock(self.level + 1, self.score)
+        victory.load(self.time, self.score)
+        sm.current = 'Victory'
+        menu.rebuild()
+
+    def on_step_victory(self, dt):
+        self.ending += dt
+        # move to portal center
+        if self.ending < 1:
+            x, y = self.circle.pos
+            target_x, target_y = self.portal.pos
+            target_x += self.portal.width / 2 - self.circle.radius
+            target_y += self.portal.height / 2 - self.circle.radius
+            step = dt / (1. - self.ending)
+            if step >= 1:
+                self.circle.pos = (target_x, target_y)
+            else:
+                self.circle.pos = (x + (target_x - x) * step, y + (target_y - y) * step)
+        # vanish
+        elif self.ending < 2:
+            step = (2. - self.ending) * 2
+            ds = (self.circle.size[0] - self.circle.radius * step) / 2
+            self.circle.size = (self.circle.radius * step, self.circle.radius * step)
+            x, y = self.circle.pos
+            self.circle.pos = (x + ds, y + ds)
+        # end
+        else:
+            self.on_end_victory()
+
     def on_touch_down(self, touch):
-        if self.circle is None:
+        if self.ending >= 0:
+            self.on_end_victory()
+        elif self.circle is None:
             self.add_circle(touch.x, touch.y)
         elif self.charged_low or self.charge > 0:
             self.circle.bounce(touch.x, touch.y, self.charge)
@@ -561,6 +607,7 @@ class Victory(Screen):
 intro = Intro()
 menu = Menu()
 victory = Victory()
+debug_mode = True
 
 
 class SkyKivyApp(App):
@@ -576,7 +623,13 @@ class SkyKivyApp(App):
         sm.add_widget(menu)
         victory.build()
         sm.add_widget(victory)
-        sm.current = 'Intro'
+        if debug_mode:
+            play = Playground()
+            play.build(1)
+            sm.add_widget(play)
+            sm.current = 'Playground'
+        else:
+            sm.current = 'Intro'
         return sm
 
     def on_keyboard(self, window, keycode1, keycode2, text, modifiers):
