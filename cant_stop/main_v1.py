@@ -35,9 +35,10 @@ circle_texture = Image(source=image_folder('circle.png'), mipmap=True).texture
 class Phase(Enum):
     ROLL = 1
     ROLLING = 2
-    SELECT = 3
-    CHOOSE = 4
-    FAILED = 5
+    PAIRING = 3
+    PLACE = 4
+    CHOOSE = 5
+    FAILED = 6
 
 
 class DiceLayout(BoxLayout):
@@ -47,7 +48,7 @@ class DiceLayout(BoxLayout):
         super(DiceLayout, self).__init__(orientation='vertical', **kwargs)
         self.dices = []
         for x in range(DICE_COUNT):
-            dice = Dice()
+            dice = DiceButton(self, disabled=True)
             self.add_widget(dice)
             self.dices.append(dice)
         self.event = None
@@ -55,17 +56,34 @@ class DiceLayout(BoxLayout):
         self.animation_time = 0
 
     def reset(self, dice):
+        dice.selected = False
         dice.text = dice.text.replace(SELECT_COLOR, RESET_COLOR)
 
     def select(self, dice):
+        dice.selected = True
         dice.text = dice.text.replace(RESET_COLOR, SELECT_COLOR)
 
+    def on_dice_pressed(self, dice):
+        if dice.selected:
+            self.reset(dice)
+            self.ready = False
+        else:
+            selected = [x for x in self.dices if x.selected]
+            if len(selected) >= 2:
+                for dice2 in selected:
+                    self.reset(dice2)
+            self.select(dice)
+            self.ready = len(selected) == 1
+
     def roll_dice(self, event):
-        self.ready = False
         for dice in self.dices:
             self.reset(dice)
             dice.update(randint(1, 6))
         self.start_animation()
+
+    def enable_dice(self, enable):
+        for dice in self.dices:
+            dice.disabled = not enable
 
     def start_animation(self):
         self.animation_step = 0
@@ -83,7 +101,8 @@ class DiceLayout(BoxLayout):
 
     def stop_animation(self):
         self.event.cancel()
-        self.ready = True
+        self.enable_dice(True)
+        self.parent.phase = Phase.PAIRING
 
     def get_selected_pairs(self):
         pair1 = 0
@@ -96,23 +115,23 @@ class DiceLayout(BoxLayout):
         return [pair1, pair2]
 
     def get_all_pairs(self):
-        pairs = {}
-        key = [self.dices[0].value + self.dices[1].value, self.dices[2].value + self.dices[3].value].sort()
-        val = [0, 1, 2, 3]
-        pairs[key] = val
-        key = [self.dices[0].value + self.dices[2].value, self.dices[1].value + self.dices[3].value].sort()
-        val = [0, 2, 1, 3]
-        pairs[key] = val
-        key = [self.dices[0].value + self.dices[3].value, self.dices[1].value + self.dices[2].value].sort()
-        val = [0, 3, 1, 2]
-        pairs[key] = val
+        pairs = set()
+        pairs.add(self.dices[0].value + self.dices[1].value)
+        pairs.add(self.dices[0].value + self.dices[2].value)
+        pairs.add(self.dices[0].value + self.dices[3].value)
+        pairs.add(self.dices[1].value + self.dices[2].value)
+        pairs.add(self.dices[1].value + self.dices[3].value)
+        pairs.add(self.dices[2].value + self.dices[3].value)
         return pairs
 
 
-class Dice(Label):
-    def __init__(self, **kwargs):
-        super(Dice, self).__init__(text='[color=' + RESET_COLOR + '][size=70]' + RESET_DICE + '[/size][/color]', markup=True, **kwargs)
+class DiceButton(Button):
+    def __init__(self, screen: DiceLayout, **kwargs):
+        super(DiceButton, self).__init__(text='[color='+RESET_COLOR+'][size=70]' + RESET_DICE + '[/size][/color]', markup=True, **kwargs)
+        self.screen = screen
         self.value = 0
+        self.selected = False
+        self.bind(on_release=self.screen.on_dice_pressed)
 
     def update(self, value):
         self.value = value
@@ -216,6 +235,7 @@ class CantStopScreen(BoxLayout):
     
     def __init__(self, **kwargs):
         super(CantStopScreen, self).__init__(orientation='horizontal', **kwargs)
+        # self.bind(phase=self.on_phase)
         # Build Dices UI
         self.dices = DiceLayout(size_hint_x=0.2)
         self.add_widget(self.dices)
@@ -238,13 +258,14 @@ class CantStopScreen(BoxLayout):
         panel = BoxLayout(orientation='vertical')
         panel.add_widget(self.board)
         # Button
-        self.buttons = BoxLayout(orientation='horizontal', spacing=10, size_hint_y=0.2)
+        buttons = BoxLayout(orientation='horizontal', spacing=10, size_hint_y=0.2)
         # self.play = Button(background_normal=image_folder('dices.png'), background_down=image_folder('dices.png'), background_disabled_normal=image_folder('dices.png'), background_color=(1, 1, 1, 1), size_hint_x=0.2)
         self.play = Button(text='[color='+RESET_COLOR+'][size=30]PLAY[/size][/color]', markup=True, size_hint_x=0.3)
         self.play.bind(on_press=self.play_round)
-        self.buttons.add_widget(self.play)
+        buttons.add_widget(self.play)
         self.stop = Button(text='[color='+RESET_COLOR+'][size=30]STOP[/size][/color]', markup=True, size_hint_x=0.3, disabled=True)
         self.stop.bind(on_press=self.stop_round)
+        buttons.add_widget(self.stop)
         # Climbers stock
         self.climbers = []
         self.remaining_climbers = CLIMBER_COUNT
@@ -267,34 +288,13 @@ class CantStopScreen(BoxLayout):
 
     def on_ready(self, _, value):
         if value:
-            all_pairs = self.dices.get_all_pairs()
-            selections = {}
-            phase = Phase.PLACE
-            if self.remaining_climbers > 1:
-                selections = all_pairs
-            elif self.remaining_climbers == 1:
-                for pair, dices in all_pairs.items():
-                    if self.board.can_use_without_climber(pair[0]):
-                        selections[pair] = dices
-                    else:
-                        selections[pair[1]] = [dices[2], dices[3]]
-            else:
-                for pair, dices in all_pairs.items():
-                    use1 = self.board.can_use_without_climber(pair[0])
-                    use2 = self.board.can_use_without_climber(pair[1])
-                    if use1 and use2:
-                        selections[pair] = dices
-                    elif use1:
-                        selections[pair[0]] = [dices[0], dices[1]]
-                    elif use2:
-                        selections[pair[1]] = [dices[2], dices[3]]
-                    else:
-                        phase = Phase.FAILED
-            self.phase = phase
+            self.phase = Phase.PLACE
             self.play.text = '[color='+RESET_COLOR+'][size=30]CLIMB[/size][/color]'
             for pair in self.dices.get_selected_pairs():
                 self.board.pre_select(pair)
-        self.board.un_select()
+        else:
+            self.phase = Phase.PAIRING
+            self.board.un_select()
 
     def on_phase(self, _, value):
         if self.phase == Phase.ROLL:
