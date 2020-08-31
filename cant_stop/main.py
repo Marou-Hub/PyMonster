@@ -7,7 +7,7 @@ kivy.require('1.9.1')
 
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from kivy.properties import BooleanProperty, ObjectProperty
+from kivy.properties import BooleanProperty, ObjectProperty, NumericProperty
 from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.app import App
@@ -58,7 +58,7 @@ class DiceLayout(BoxLayout):
         dice.text = dice.text.replace(SELECT_COLOR, RESET_COLOR)
 
     def select(self, dice):
-        dice.text = dice.text.replace(RESET_COLOR, SELECT_COLOR)
+        self.dices[dice].text = self.dices[dice].text.replace(RESET_COLOR, SELECT_COLOR)
 
     def roll_dice(self, event):
         self.ready = False
@@ -70,7 +70,6 @@ class DiceLayout(BoxLayout):
     def start_animation(self):
         self.animation_step = 0
         self.animation_time = 0
-        self.enable_dice(False)
         self.event = Clock.schedule_interval(self.step_animation, 1 / 30.)
 
     def step_animation(self, time_passed):
@@ -85,25 +84,15 @@ class DiceLayout(BoxLayout):
         self.event.cancel()
         self.ready = True
 
-    def get_selected_pairs(self):
-        pair1 = 0
-        pair2 = 0
-        for dice in self.dices:
-            if dice.selected:
-                pair1 += dice.value
-            else:
-                pair2 += dice.value
-        return [pair1, pair2]
-
     def get_all_pairs(self):
         pairs = {}
-        key = [self.dices[0].value + self.dices[1].value, self.dices[2].value + self.dices[3].value].sort()
+        key = tuple(sorted([self.dices[0].value + self.dices[1].value, self.dices[2].value + self.dices[3].value]))
         val = [0, 1, 2, 3]
         pairs[key] = val
-        key = [self.dices[0].value + self.dices[2].value, self.dices[1].value + self.dices[3].value].sort()
+        key = tuple(sorted([self.dices[0].value + self.dices[2].value, self.dices[1].value + self.dices[3].value]))
         val = [0, 2, 1, 3]
         pairs[key] = val
-        key = [self.dices[0].value + self.dices[3].value, self.dices[1].value + self.dices[2].value].sort()
+        key = tuple(sorted([self.dices[0].value + self.dices[3].value, self.dices[1].value + self.dices[2].value]))
         val = [0, 3, 1, 2]
         pairs[key] = val
         return pairs
@@ -143,7 +132,7 @@ class BoardLayout(BoxLayout):
             for y in range(len(li)):
                 widget = Image()
                 widget.texture = circle_texture
-                lim.append(widget)
+                lim.insert(0, widget)
                 col.add_widget(widget)
             label = Label(text='[color=' + RESET_COLOR + '][size=40]' + str(x) + '[/size][/color]', markup=True, halign='center')
             col.add_widget(label)
@@ -186,11 +175,11 @@ class BoardLayout(BoxLayout):
             for i, v in enumerate(li):
                 if v == 1:
                     player = i
-                    self.board_images[k][len(li) - i - 1].color = [0, 0, 1, 1]
+                    self.board_images[k][i].color = [0, 0, 1, 1]
                 else:
-                    self.board_images[k][len(li) - i - 1].color = [1, 1, 1, 1]
+                    self.board_images[k][i].color = [1, 1, 1, 1]
             if k in self.climbers:
-                self.board_images[k][len(li) - (player + self.climbers[k]) - 1].color = [1, 0, 0, 1]
+                self.board_images[k][min(player + self.climbers[k], len(li) - 1)].color = [1, 0, 0, 1]
 
     def reset(self):
         self.un_select()
@@ -213,13 +202,21 @@ class BoardLayout(BoxLayout):
 
 class CantStopScreen(BoxLayout):
     phase = ObjectProperty(Phase.ROLL)
-    
+    remaining_climbers = NumericProperty(CLIMBER_COUNT)
+
     def __init__(self, **kwargs):
         super(CantStopScreen, self).__init__(orientation='horizontal', **kwargs)
         # Build Dices UI
-        self.dices = DiceLayout(size_hint_x=0.2)
-        self.add_widget(self.dices)
+        tools = BoxLayout(orientation='vertical', size_hint_x=0.15)
+        self.dices = DiceLayout()
         self.dices.bind(ready=self.on_ready)
+        tools.add_widget(self.dices)
+        # Climbers stock
+        container = BoxLayout(orientation='vertical', padding=[15, 0], size_hint_y=0.2)
+        self.climbers = Button(text='[color=888888][size=50]' + str(CLIMBER_COUNT) + '[/size][/color]', markup=True, background_disabled_normal=image_folder('climber.png'), disabled=True)
+        container.add_widget(self.climbers)
+        tools.add_widget(container)
+        self.add_widget(tools)
         # Build board UI
         board = {
             2: [0, 0, 0],
@@ -245,31 +242,18 @@ class CantStopScreen(BoxLayout):
         self.buttons.add_widget(self.play)
         self.stop = Button(text='[color='+RESET_COLOR+'][size=30]STOP[/size][/color]', markup=True, size_hint_x=0.3, disabled=True)
         self.stop.bind(on_press=self.stop_round)
-        # Climbers stock
-        self.climbers = []
-        self.remaining_climbers = CLIMBER_COUNT
-        for x in range(CLIMBER_COUNT):
-            climber = Image(size_hint_x=0.15)
-            climber.color = [1, 0, 0, 1]
-            climber.texture = circle_texture
-            self.climbers.append(climber)
-            buttons.add_widget(climber)
         # Help label
         self.label = Label(text='[color=ffd800][size=20]Launch dice[/size][/color]', markup=True, halign='left')
-        buttons.add_widget(self.label)
-        panel.add_widget(buttons)
+        panel.add_widget(self.buttons)
         self.add_widget(panel)
 
     def start_round(self):
         self.remaining_climbers = CLIMBER_COUNT
-        for climber in self.climbers:
-            climber.color = [1, 0, 0, 1]
 
     def on_ready(self, _, value):
         if value:
             all_pairs = self.dices.get_all_pairs()
             selections = {}
-            phase = Phase.PLACE
             if self.remaining_climbers > 1:
                 selections = all_pairs
             elif self.remaining_climbers == 1:
@@ -277,7 +261,7 @@ class CantStopScreen(BoxLayout):
                     if self.board.can_use_without_climber(pair[0]):
                         selections[pair] = dices
                     else:
-                        selections[pair[1]] = [dices[2], dices[3]]
+                        selections[(pair[1], )] = [dices[2], dices[3]]
             else:
                 for pair, dices in all_pairs.items():
                     use1 = self.board.can_use_without_climber(pair[0])
@@ -285,78 +269,72 @@ class CantStopScreen(BoxLayout):
                     if use1 and use2:
                         selections[pair] = dices
                     elif use1:
-                        selections[pair[0]] = [dices[0], dices[1]]
+                        selections[(pair[0], )] = [dices[0], dices[1]]
                     elif use2:
-                        selections[pair[1]] = [dices[2], dices[3]]
-                    else:
-                        phase = Phase.FAILED
-            self.phase = phase
-            self.play.text = '[color='+RESET_COLOR+'][size=30]CLIMB[/size][/color]'
-            for pair in self.dices.get_selected_pairs():
-                self.board.pre_select(pair)
+                        selections[(pair[1], )] = [dices[2], dices[3]]
+            self.buttons.clear_widgets()
+            if len(selections) > 0:
+                for pair, dices in selections.items():
+                    sel = Button(text='[color=' + RESET_COLOR + '][size=30]' + str(pair) + '[/size][/color]', markup=True)
+                    sel.bind(on_press=self.make_selection_bind(pair, dices))
+                    self.buttons.add_widget(sel)
+                self.phase = Phase.SELECT
+            else:
+                self.phase = Phase.FAILED
         self.board.un_select()
+
+    def make_selection_bind(self, pair, dices):
+        def selection_bind(event):
+            consume_climber = self.board.select(pair[0])
+            if consume_climber:
+                self.remaining_climbers -= 1
+            self.dices.select(dices[0])
+            self.dices.select(dices[1])
+            if len(pair) > 1:
+                consume_climber = self.board.select(pair[1])
+                if consume_climber:
+                    self.remaining_climbers -= 1
+            self.phase = Phase.CHOOSE
+        return selection_bind
+
+    def on_remaining_climbers(self, _, value):
+        self.climbers.text = '[color=888888][size=50]' + str(value) + '[/size][/color]'
 
     def on_phase(self, _, value):
         if self.phase == Phase.ROLL:
             self.label.text = '[color=ffd800][size=20]Roll dice[/size][/color]'
-            self.play.text = '[color='+RESET_COLOR+'][size=30]PLAY[/size][/color]'
             self.play.disabled = False
             self.stop.disabled = True
         elif self.phase == Phase.ROLLING:
             self.label.text = '[color=ffd800][size=20]Rolling[/size][/color]'
             self.play.disabled = True
             self.stop.disabled = True
-        elif self.phase == Phase.PAIRING:
-            if self.remaining_climbers == 0:
-                for pair in self.dices.get_all_pairs():
-                    if self.board.can_use_without_climber(pair):
-                        break
-                else:
-                    self.phase = Phase.FAILED
-                    return
-            self.label.text = '[color=ffd800][size=20]Pair dice[/size][/color]'
-            self.play.disabled = True
-            self.stop.disabled = True
-        elif self.phase == Phase.PLACE:
-            self.label.text = '[color=ffd800][size=20]Climb or pair again[/size][/color]'
-            self.play.disabled = False
-            self.stop.disabled = True
         elif self.phase == Phase.CHOOSE:
+            self.buttons.clear_widgets()
+            self.buttons.add_widget(self.play)
+            self.buttons.add_widget(self.stop)
             self.label.text = '[color=ffd800][size=20]Continue or Stop[/size][/color]'
             self.play.text = '[color='+RESET_COLOR+'][size=30]PLAY[/size][/color]'
             self.play.disabled = False
             self.stop.disabled = False
         elif self.phase == Phase.FAILED:
             self.label.text = '[color=ffd800][size=20]FAILED!![/size][/color]'
+            self.buttons.add_widget(self.play)
+            self.buttons.add_widget(self.label)
             self.play.disabled = True
             self.stop.disabled = True
             Clock.schedule_once(self.fail_round, 1.)
 
     def play_round(self, event):
-        if self.phase == Phase.ROLL or self.phase == Phase.CHOOSE:
-            self.phase = Phase.ROLLING
-            self.dices.roll_dice(event)
-        elif self.phase == Phase.PLACE:
-            self.dices.enable_dice(False)
-            pairs = self.dices.get_selected_pairs()
-            for i, pair in enumerate(pairs):
-                if self.board.can_use_without_climber(pair):
-                    self.board.select(pair)
-                    pairs[i] = -1
-            for i, pair in enumerate(pairs):
-                if pair != -1 and self.remaining_climbers > 0:
-                    consume_climber = self.board.select(pair)
-                    if consume_climber:
-                        self.remaining_climbers -= 1
-                        self.climbers[self.remaining_climbers].color = [0.5, 0.5, 0.5, 1]
-                    pairs[i] = -1
-            if len([x for x in pairs if x == -1]) > 0:  # At least some progress
-                self.phase = Phase.CHOOSE
-            else:
-                self.fail_round(event)
+        self.phase = Phase.ROLLING
+        self.dices.roll_dice(event)
 
     def stop_round(self, event):
         self.board.validate()
+        self.label.text = '[color=ffd800][size=20]Next Player[/size][/color]'
+        self.buttons.remove_widget(self.stop)
+        self.buttons.add_widget(self.label)
+        self.start_round()
 
     def fail_round(self, event):
         self.board.reset()
