@@ -1,5 +1,6 @@
 from random import randint
 from enum import Enum
+from os.path import join, dirname
 
 import kivy
 
@@ -13,7 +14,9 @@ from kivy.uix.label import Label
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window, platform
-from os.path import join, dirname
+from kivy.graphics.context_instructions import Color
+from kivy.graphics.vertex_instructions import Rectangle
+from kivy.utils import get_color_from_hex
 
 # KIVY LAUNCHER uses KIVY version is 1.9.1
 
@@ -40,6 +43,44 @@ class Phase(Enum):
     FAILED = 5
 
 
+class Player:
+    def __init__(self, id, color):
+        self.id = id
+        self.color = color
+        self.score = 0
+
+    def get_name(self):
+        return 'Player ' + str(self.id)
+
+
+class PlayerLabel(Label):
+    def __init__(self, player, **kwargs):
+        super(PlayerLabel, self).__init__(text='[color=' + player.color + '][size=30]' + player.get_name() + '[/size][/color]', markup=True, halign='center', **kwargs)
+        self.selected = False
+
+    def on_size(self, *args):
+        self._update()
+
+    def on_pos(self, *args):
+        self._update()
+
+    def select(self, value):
+        self.selected = value
+        self._update()
+
+    def _update(self):
+        self.canvas.before.clear()
+        with self.canvas.before:
+            if self.selected:
+                Color(1, 1, 1, 1)
+            else:
+                Color(0, 0, 0, 0)
+            Rectangle(pos=self.pos, size=self.size)
+
+
+PLAYERS = (Player(1, '0000ff'), Player(2, '00ff00'), Player(3, 'ff00ff'))
+
+
 class DiceLayout(BoxLayout):
     ready = BooleanProperty(False)
 
@@ -50,6 +91,7 @@ class DiceLayout(BoxLayout):
             dice = Dice()
             self.add_widget(dice)
             self.dices.append(dice)
+        self.pairs = {}
         self.event = None
         self.animation_step = 0
         self.animation_time = 0
@@ -58,7 +100,7 @@ class DiceLayout(BoxLayout):
         dice.text = dice.text.replace(SELECT_COLOR, RESET_COLOR)
 
     def select(self, dice):
-        self.dices[dice].text = self.dices[dice].text.replace(RESET_COLOR, SELECT_COLOR)
+        dice.text = dice.text.replace(RESET_COLOR, SELECT_COLOR)
 
     def roll_dice(self, event):
         self.ready = False
@@ -85,17 +127,19 @@ class DiceLayout(BoxLayout):
         self.ready = True
 
     def get_all_pairs(self):
-        pairs = {}
-        key = tuple(sorted([self.dices[0].value + self.dices[1].value, self.dices[2].value + self.dices[3].value]))
-        val = [0, 1, 2, 3]
-        pairs[key] = val
-        key = tuple(sorted([self.dices[0].value + self.dices[2].value, self.dices[1].value + self.dices[3].value]))
-        val = [0, 2, 1, 3]
-        pairs[key] = val
-        key = tuple(sorted([self.dices[0].value + self.dices[3].value, self.dices[1].value + self.dices[2].value]))
-        val = [0, 3, 1, 2]
-        pairs[key] = val
-        return pairs
+        self.pairs = {}
+        self.add_pairs(0, 1, 2, 3)
+        self.add_pairs(0, 2, 1, 3)
+        self.add_pairs(0, 3, 1, 2)
+        return self.pairs
+
+    def add_pairs(self, p11, p12, p21, p22):
+        p1 = self.dices[p11].value + self.dices[p12].value
+        p2 = self.dices[p21].value + self.dices[p22].value
+        if p1 > p2:
+            self.pairs[(p2, p1)] = (self.dices[p21], self.dices[p22], self.dices[p11], self.dices[p12])
+        else:
+            self.pairs[(p1, p2)] = (self.dices[p11], self.dices[p12], self.dices[p21], self.dices[p22])
 
 
 class Dice(Label):
@@ -113,6 +157,7 @@ class BoardLayout(BoxLayout):
         super(BoardLayout, self).__init__(orientation='horizontal', **kwargs)
         # Board
         self.board = board
+        self.player_id = -1
         self.climbers = {}
         self.board_images = {}
         self.board_labels = {}
@@ -139,9 +184,6 @@ class BoardLayout(BoxLayout):
             self.add_widget(col)
             self.board_images[x] = lim
             self.board_labels[x] = label
-
-    def pre_select(self, pair):
-        self.board_labels[pair].text = self.board_labels[pair].text.replace(RESET_COLOR, SELECT_COLOR)
 
     def un_select(self):
         for label in self.board_labels.values():
@@ -173,11 +215,13 @@ class BoardLayout(BoxLayout):
         for k, li in self.board.items():
             player = -1
             for i, v in enumerate(li):
-                if v == 1:
-                    player = i
-                    self.board_images[k][i].color = [0, 0, 1, 1]
-                else:
+
+                if v == 0:
                     self.board_images[k][i].color = [1, 1, 1, 1]
+                else:
+                    if v == self.player_id:
+                        player = i
+                    self.board_images[k][i].color = get_color_from_hex(PLAYERS[v-1].color)
             if k in self.climbers:
                 self.board_images[k][min(player + self.climbers[k], len(li) - 1)].color = [1, 0, 0, 1]
 
@@ -190,12 +234,12 @@ class BoardLayout(BoxLayout):
         for k, v in self.climbers.items():
             li = self.board[k]
             for index, value in enumerate(li):
-                if value == 1:
+                if value == self.player_id:
                     li[index] = 0
-                    li[min(index + v, len(li) - 1)] = 1
+                    li[min(index + v, len(li) - 1)] = self.player_id
                     break
             else:
-                li[min(v - 1, len(li) - 1)] = 1
+                li[min(v - 1, len(li) - 1)] = self.player_id
         self.climbers = {}
         self.update()
 
@@ -206,6 +250,7 @@ class CantStopScreen(BoxLayout):
 
     def __init__(self, **kwargs):
         super(CantStopScreen, self).__init__(orientation='horizontal', **kwargs)
+        self.player = -1
         # Build Dices UI
         tools = BoxLayout(orientation='vertical', size_hint_x=0.15)
         self.dices = DiceLayout()
@@ -217,6 +262,15 @@ class CantStopScreen(BoxLayout):
         container.add_widget(self.climbers)
         tools.add_widget(container)
         self.add_widget(tools)
+        # Main panel
+        panel = BoxLayout(orientation='vertical')
+        player_layout = BoxLayout(orientation='horizontal', size_hint_y=0.1)
+        self.player_labels = []
+        for player in PLAYERS:
+            player_label = PlayerLabel(player)
+            self.player_labels.append(player_label)
+            player_layout.add_widget(player_label)
+        panel.add_widget(player_layout)
         # Build board UI
         board = {
             2: [0, 0, 0],
@@ -232,23 +286,32 @@ class CantStopScreen(BoxLayout):
             12: [0, 0, 0],
         }
         self.board = BoardLayout(board)
-        panel = BoxLayout(orientation='vertical')
         panel.add_widget(self.board)
         # Button
         self.buttons = BoxLayout(orientation='horizontal', spacing=10, size_hint_y=0.2)
         # self.play = Button(background_normal=image_folder('dices.png'), background_down=image_folder('dices.png'), background_disabled_normal=image_folder('dices.png'), background_color=(1, 1, 1, 1), size_hint_x=0.2)
-        self.play = Button(text='[color='+RESET_COLOR+'][size=30]PLAY[/size][/color]', markup=True, size_hint_x=0.3)
+        self.play = Button(text='[color='+RESET_COLOR+'][size=30]PLAY[/size][/color]', markup=True, size_hint_x=0.5)
         self.play.bind(on_press=self.play_round)
         self.buttons.add_widget(self.play)
-        self.stop = Button(text='[color='+RESET_COLOR+'][size=30]STOP[/size][/color]', markup=True, size_hint_x=0.3, disabled=True)
+        self.stop = Button(text='[color='+RESET_COLOR+'][size=30]STOP[/size][/color]', markup=True, size_hint_x=0.5, disabled=True)
         self.stop.bind(on_press=self.stop_round)
         # Help label
         self.label = Label(text='[color=ffd800][size=20]Launch dice[/size][/color]', markup=True, halign='left')
+        self.buttons.add_widget(self.label)
         panel.add_widget(self.buttons)
         self.add_widget(panel)
+        # Start game
+        self.start_round()
 
     def start_round(self):
         self.remaining_climbers = CLIMBER_COUNT
+        self.player += 1
+        if self.player >= len(PLAYERS):
+            self.player = 0
+        self.board.player_id = PLAYERS[self.player].id
+        for i, p in enumerate(self.player_labels):
+            p.select(self.player == i)
+        self.label.text = '[color=ffd800][size=20]' + PLAYERS[self.player].get_name() + '[/size][/color]'
 
     def on_ready(self, _, value):
         if value:
@@ -258,10 +321,11 @@ class CantStopScreen(BoxLayout):
                 selections = all_pairs
             elif self.remaining_climbers == 1:
                 for pair, dices in all_pairs.items():
-                    if self.board.can_use_without_climber(pair[0]):
+                    if self.board.can_use_without_climber(pair[0]) or self.board.can_use_without_climber(pair[1]):
                         selections[pair] = dices
                     else:
-                        selections[(pair[1], )] = [dices[2], dices[3]]
+                        selections[(pair[0], )] = (dices[0], dices[1])
+                        selections[(pair[1], )] = (dices[2], dices[3])
             else:
                 for pair, dices in all_pairs.items():
                     use1 = self.board.can_use_without_climber(pair[0])
@@ -269,9 +333,9 @@ class CantStopScreen(BoxLayout):
                     if use1 and use2:
                         selections[pair] = dices
                     elif use1:
-                        selections[(pair[0], )] = [dices[0], dices[1]]
+                        selections[(pair[0], )] = (dices[0], dices[1])
                     elif use2:
-                        selections[(pair[1], )] = [dices[2], dices[3]]
+                        selections[(pair[1], )] = (dices[2], dices[3])
             self.buttons.clear_widgets()
             if len(selections) > 0:
                 for pair, dices in selections.items():
