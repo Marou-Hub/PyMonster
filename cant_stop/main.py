@@ -264,8 +264,8 @@ class BoardLayout(BoxLayout):
         self.update()
 
     def start_animation(self):
-        self.show_overlap = False
-        self.event = Clock.schedule_interval(self.step_animation, 1.)
+        if self.event is None:
+            self.event = Clock.schedule_interval(self.step_animation, 1.)
 
     def step_animation(self, time_passed):
         self.show_overlap = not self.show_overlap
@@ -274,7 +274,11 @@ class BoardLayout(BoxLayout):
     def stop_animation(self):
         if self.event:
             self.event.cancel()
+            self.event = None
         self.show_overlap = True
+
+    def is_overlap(self):
+        return self.event is not None
 
 
 class CantStopScreen(BoxLayout):
@@ -326,7 +330,7 @@ class CantStopScreen(BoxLayout):
         self.play = Button(text='[color='+RESET_COLOR+'][size=30]PLAY[/size][/color]', markup=True, size_hint_x=0.5)
         self.play.bind(on_press=self.play_round)
         self.buttons.add_widget(self.play)
-        self.stop = Button(text='[color='+RESET_COLOR+'][size=30]STOP[/size][/color]', markup=True, size_hint_x=0.5, disabled=True)
+        self.stop = Button(text='[color='+RESET_COLOR+'][size=30]STOP[/size][/color]', markup=True, size_hint_x=0.5)
         self.stop.bind(on_press=self.stop_round)
         # Help label
         self.label = Label(text='[color=ffd800][size=20]Launch dice[/size][/color]', markup=True, halign='left')
@@ -401,25 +405,23 @@ class CantStopScreen(BoxLayout):
         if self.phase == Phase.ROLL:
             self.label.text = '[color=ffd800][size=20]Roll dice[/size][/color]'
             self.play.disabled = False
-            self.stop.disabled = True
         elif self.phase == Phase.ROLLING:
             self.label.text = '[color=ffd800][size=20]Rolling[/size][/color]'
             self.play.disabled = True
-            self.stop.disabled = True
         elif self.phase == Phase.CHOOSE:
             self.buttons.clear_widgets()
             self.buttons.add_widget(self.play)
-            self.buttons.add_widget(self.stop)
-            self.label.text = '[color=ffd800][size=20]Continue or Stop[/size][/color]'
-            self.play.text = '[color='+RESET_COLOR+'][size=30]PLAY[/size][/color]'
+            if self.board.is_overlap():
+                self.label.text = "[color=ffd800][size=20]Can't Stop, overlap[/size][/color]"
+                self.buttons.add_widget(self.label)
+            else:
+                self.buttons.add_widget(self.stop)
             self.play.disabled = False
-            self.stop.disabled = False
         elif self.phase == Phase.FAILED:
             self.label.text = '[color=ffd800][size=20]FAILED!![/size][/color]'
             self.buttons.add_widget(self.play)
             self.buttons.add_widget(self.label)
             self.play.disabled = True
-            self.stop.disabled = True
             Clock.schedule_once(self.fail_round, 1.)
 
     def play_round(self, event):
