@@ -3,6 +3,7 @@ from enum import Enum
 from os.path import join, dirname
 
 import kivy
+from kivy.uix.togglebutton import ToggleButton
 
 kivy.require('1.9.1')
 
@@ -17,6 +18,7 @@ from kivy.core.window import Window, platform
 from kivy.graphics.context_instructions import Color
 from kivy.graphics.vertex_instructions import Rectangle
 from kivy.utils import get_color_from_hex
+from kivy.uix.screenmanager import ScreenManager, Screen
 
 # KIVY LAUNCHER uses KIVY version is 1.9.1
 
@@ -33,6 +35,7 @@ def image_folder(file):
 
 
 circle_texture = Image(source=image_folder('circle.png'), mipmap=True).texture
+sm = ScreenManager()
 
 
 class Phase(Enum):
@@ -44,10 +47,11 @@ class Phase(Enum):
 
 
 class Player:
-    def __init__(self, id, color):
+    def __init__(self, id, color, human):
         self.id = id
         self.color = color
         self.score = 0
+        self.human = human
 
     def get_name(self):
         return 'Player ' + str(self.id)
@@ -78,7 +82,43 @@ class PlayerLabel(Label):
             Rectangle(pos=self.pos, size=self.size)
 
 
-PLAYERS = (Player(1, '0000ff'), Player(2, '00ff00'), Player(3, 'ff00ff'))
+PLAYERS = (Player(1, '0000ff', True), Player(2, '00ff00', False), Player(3, 'ff00ff', False))
+
+
+class Menu(Screen):
+    def build(self):
+        self.name = 'Menu'  # On donne un nom a l'ecran
+        layout = BoxLayout(orientation='vertical', spacing=10)
+        title = Label(text="[color=ffd800][size=70]- CAN'T STOP -[/size][/color]", markup=True, halign='center', size_hint_y=0.3)
+        layout.add_widget(title)
+        for player in PLAYERS:
+            buttons = BoxLayout(orientation='horizontal', spacing=10, size_hint_y=0.2)
+            player_label = Label(text='[color=' + player.color + '][size=50]' + player.get_name() + '[/size][/color]', markup=True, halign='center', size_hint_x=0.3)
+            buttons.add_widget(player_label)
+            human = ToggleButton(group=player.get_name(), state=('down' if player.human else 'normal'), text='[color='+RESET_COLOR+'][size=30]HUMAN[/size][/color]', markup=True, size_hint_x=0.3)
+            buttons.add_widget(human)
+            robot = ToggleButton(group=player.get_name(), state=('normal' if player.human else 'down'), text='[color='+RESET_COLOR+'][size=30]ROBOT[/size][/color]', markup=True, size_hint_x=0.3)
+            buttons.add_widget(robot)
+            human.bind(on_press=self.make_human(player))
+            robot.bind(on_press=self.make_robot(player))
+            layout.add_widget(buttons)
+        play = Button(text='[color='+RESET_COLOR+'][size=30]PLAY[/size][/color]', markup=True, size_hint_y=0.2)
+        play.bind(on_press=self.play)
+        layout.add_widget(play)
+        self.add_widget(layout)
+
+    def play(self, event):
+        sm.current = 'Playground'
+
+    def make_human(self, player):
+        def bind(instance):
+            player.human = True
+        return bind
+
+    def make_robot(self, player):
+        def bind(instance):
+            player.human = False
+        return bind
 
 
 class DiceLayout(BoxLayout):
@@ -281,12 +321,12 @@ class BoardLayout(BoxLayout):
         return self.event is not None
 
 
-class CantStopScreen(BoxLayout):
+class CantStopLayout(BoxLayout):
     phase = ObjectProperty(Phase.ROLL)
     remaining_climbers = NumericProperty(CLIMBER_COUNT)
 
     def __init__(self, **kwargs):
-        super(CantStopScreen, self).__init__(orientation='horizontal', **kwargs)
+        super(CantStopLayout, self).__init__(orientation='horizontal', **kwargs)
         self.player = -1
         # Build Dices UI
         tools = BoxLayout(orientation='vertical', size_hint_x=0.15)
@@ -339,16 +379,6 @@ class CantStopScreen(BoxLayout):
         self.add_widget(panel)
         # Start game
         self.start_round()
-
-    def start_round(self):
-        self.remaining_climbers = CLIMBER_COUNT
-        self.player += 1
-        if self.player >= len(PLAYERS):
-            self.player = 0
-        self.board.player_id = PLAYERS[self.player].id
-        for i, p in enumerate(self.player_labels):
-            p.select(self.player == i)
-        self.label.text = '[color=ffd800][size=20]' + PLAYERS[self.player].get_name() + '[/size][/color]'
 
     def on_ready(self, _, value):
         if value:
@@ -403,12 +433,17 @@ class CantStopScreen(BoxLayout):
 
     def on_phase(self, _, value):
         if self.phase == Phase.ROLL:
-            self.label.text = '[color=ffd800][size=20]Roll dice[/size][/color]'
-            self.play.disabled = False
+            self.label.text = '[color=ffd800][size=20]' + PLAYERS[self.player].get_name() + '[/size][/color]'
+            if not PLAYERS[self.player].human:
+                self.play_round(None)
         elif self.phase == Phase.ROLLING:
             self.label.text = '[color=ffd800][size=20]Rolling[/size][/color]'
             self.play.disabled = True
+        elif self.phase == Phase.SELECT:
+            if not PLAYERS[self.player].human:
+                self.buttons.children[randint(0, len(self.buttons.children)-1)].trigger_action()
         elif self.phase == Phase.CHOOSE:
+            can_stop = False
             self.buttons.clear_widgets()
             self.buttons.add_widget(self.play)
             if self.board.is_overlap():
@@ -416,13 +451,26 @@ class CantStopScreen(BoxLayout):
                 self.buttons.add_widget(self.label)
             else:
                 self.buttons.add_widget(self.stop)
+                can_stop = True
             self.play.disabled = False
+            if not PLAYERS[self.player].human:
+                (self.play if not can_stop or randint(0, 1) == 0 else self.stop).trigger_action()
         elif self.phase == Phase.FAILED:
             self.label.text = '[color=ffd800][size=20]FAILED!![/size][/color]'
             self.buttons.add_widget(self.play)
             self.buttons.add_widget(self.label)
             self.play.disabled = True
             Clock.schedule_once(self.fail_round, 1.)
+
+    def start_round(self):
+        self.remaining_climbers = CLIMBER_COUNT
+        self.player += 1
+        if self.player >= len(PLAYERS):
+            self.player = 0
+        self.board.player_id = PLAYERS[self.player].id
+        for i, p in enumerate(self.player_labels):
+            p.select(self.player == i)
+        self.label.text = '[color=ffd800][size=20]' + PLAYERS[self.player].get_name() + '[/size][/color]'
 
     def play_round(self, event):
         self.phase = Phase.ROLLING
@@ -434,6 +482,7 @@ class CantStopScreen(BoxLayout):
         self.buttons.remove_widget(self.stop)
         self.buttons.add_widget(self.label)
         self.start_round()
+        self.phase = Phase.ROLL
 
     def fail_round(self, event):
         self.board.reset()
@@ -441,11 +490,29 @@ class CantStopScreen(BoxLayout):
         self.phase = Phase.ROLL
 
 
+class CantStopScreen(Screen):
+    def build(self):
+        self.name = 'Playground'  # On donne un nom a l'ecran
+        self.add_widget(CantStopLayout())
+
+
+#############################################################################################
+# Screen & Application
+#############################################################################################
+menu = Menu()
+playground = CantStopScreen()
+
+
 class CantStopApp(App):
     title = 'Cant Stop'
 
     def build(self):
-        return CantStopScreen()
+        menu.build()
+        sm.add_widget(menu)
+        playground.build()
+        sm.add_widget(playground)
+        sm.current = 'Menu'
+        return sm
 
     def on_pause(self):
         return True

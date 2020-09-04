@@ -581,7 +581,6 @@ class Victory(Screen):
         self.time_label.text = '[color=ffd800][size=40sp]Time elapsed: ' + str(time) + '[/size][/color]'
         self.total_label.text = '[color=ffd800][size=40sp]Total Coins: ' + str(prefs['coins']) + '[/size][/color]'
 
-
     def on_enter(self, *args):
         self.event = Clock.schedule_interval(self.scroll_textures, 1 / 30.)
 
