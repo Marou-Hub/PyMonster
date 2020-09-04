@@ -161,6 +161,8 @@ class BoardLayout(BoxLayout):
         self.climbers = {}
         self.board_images = {}
         self.board_labels = {}
+        self.event = None
+        self.show_overlap = True
         # Build board UI
         max_len = 0
         for li in self.board.values():
@@ -207,15 +209,31 @@ class BoardLayout(BoxLayout):
             self.climbers[pair] = 1
         else:
             self.climbers[pair] += 1
+        # Compute overlap
+        self.compute_overlap()
         # update UI
         self.update()
         return need_climber
+
+    def compute_overlap(self):
+        for k, n in self.climbers.items():
+            li = self.board[k]
+            player = -1
+            for i, v in enumerate(li):
+                if v == self.player_id:
+                    player = i
+                    break
+            idx = min(player + n, len(li) - 1)
+            if li[idx] != 0:
+                self.start_animation()
+                break
+        else:
+            self.stop_animation()
 
     def update(self):
         for k, li in self.board.items():
             player = -1
             for i, v in enumerate(li):
-
                 if v == 0:
                     self.board_images[k][i].color = [1, 1, 1, 1]
                 else:
@@ -223,7 +241,9 @@ class BoardLayout(BoxLayout):
                         player = i
                     self.board_images[k][i].color = get_color_from_hex(PLAYERS[v-1].color)
             if k in self.climbers:
-                self.board_images[k][min(player + self.climbers[k], len(li) - 1)].color = [1, 0, 0, 1]
+                idx = min(player + self.climbers[k], len(li) - 1)
+                if li[idx] == 0 or self.show_overlap:
+                    self.board_images[k][min(player + self.climbers[k], len(li) - 1)].color = [1, 0, 0, 1]
 
     def reset(self):
         self.un_select()
@@ -242,6 +262,19 @@ class BoardLayout(BoxLayout):
                 li[min(v - 1, len(li) - 1)] = self.player_id
         self.climbers = {}
         self.update()
+
+    def start_animation(self):
+        self.show_overlap = False
+        self.event = Clock.schedule_interval(self.step_animation, 1.)
+
+    def step_animation(self, time_passed):
+        self.show_overlap = not self.show_overlap
+        self.update()
+
+    def stop_animation(self):
+        if self.event:
+            self.event.cancel()
+        self.show_overlap = True
 
 
 class CantStopScreen(BoxLayout):
