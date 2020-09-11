@@ -26,6 +26,7 @@ from json import load, dump
 # Things that DO NOT WORK with KIVY LAUNCHER (specific python 3)
 # - Overriding App __init__
 # - Formatted strings in Label: ie Label(text=f"toto{var}", ... (however, string concat works)
+# - Enum
 
 #############################################################################################
 # Globals & constants

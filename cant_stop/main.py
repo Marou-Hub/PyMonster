@@ -3,12 +3,12 @@ from enum import Enum
 from os.path import join, dirname
 
 import kivy
-from kivy.uix.togglebutton import ToggleButton
 
 kivy.require('1.9.1')
 
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from kivy.uix.togglebutton import ToggleButton
 from kivy.properties import BooleanProperty, ObjectProperty, NumericProperty
 from kivy.uix.image import Image
 from kivy.uix.label import Label
@@ -20,13 +20,16 @@ from kivy.graphics.vertex_instructions import Rectangle
 from kivy.utils import get_color_from_hex
 from kivy.uix.screenmanager import ScreenManager, Screen
 
-# KIVY LAUNCHER uses KIVY version is 1.9.1
+from cant_stop.players.player import Player
+from cant_stop.game_logic.context import Context
+from cant_stop.constants import CLIMBER_COUNT, DICE_COUNT, RESET_COLOR, RESET_DICE, SELECT_COLOR
 
-DICE_COUNT = 4
-CLIMBER_COUNT = 3
-RESET_DICE = '0'
-SELECT_COLOR = 'ff0000'
-RESET_COLOR = 'ffd8ff'
+# KIVY LAUNCHER uses KIVY version is 1.9.1 and PYTHON 2.7.2 !!
+
+#############################################################################################
+# Globals & constants
+#############################################################################################
+
 curdir = dirname(__file__)
 
 
@@ -46,16 +49,9 @@ class Phase(Enum):
     FAILED = 5
 
 
-class Player:
-    def __init__(self, id, color, human):
-        self.id = id
-        self.color = color
-        self.score = 0
-        self.human = human
-
-    def get_name(self):
-        return 'Player ' + str(self.id)
-
+#############################################################################################
+# Players
+#############################################################################################
 
 class PlayerLabel(Label):
     def __init__(self, player, **kwargs):
@@ -84,6 +80,10 @@ class PlayerLabel(Label):
 
 PLAYERS = (Player(1, '0000ff', True), Player(2, '00ff00', False), Player(3, 'ff00ff', False))
 
+
+#############################################################################################
+# Menu screen
+#############################################################################################
 
 class Menu(Screen):
     def build(self):
@@ -120,6 +120,10 @@ class Menu(Screen):
             player.human = False
         return bind
 
+
+#############################################################################################
+# Dices management
+#############################################################################################
 
 class DiceLayout(BoxLayout):
     ready = BooleanProperty(False)
@@ -192,6 +196,10 @@ class Dice(Label):
         self.text = '[color=' + RESET_COLOR + '][size=70]' + str(value) + '[/size][/color]'
 
 
+#############################################################################################
+# Play board management
+#############################################################################################
+
 class BoardLayout(BoxLayout):
     def __init__(self, board, **kwargs):
         super(BoardLayout, self).__init__(orientation='horizontal', **kwargs)
@@ -230,6 +238,9 @@ class BoardLayout(BoxLayout):
     def un_select(self):
         for label in self.board_labels.values():
             label.text = label.text.replace(SELECT_COLOR, RESET_COLOR)
+
+    def pre_select(self, pair):
+        self.board_labels[pair].text = self.board_labels[pair].text.replace(RESET_COLOR, SELECT_COLOR)
 
     def can_use_without_climber(self, pair):
         li = self.board[pair]
@@ -305,7 +316,7 @@ class BoardLayout(BoxLayout):
 
     def start_animation(self):
         if self.event is None:
-            self.event = Clock.schedule_interval(self.step_animation, 1.)
+            self.event = Clock.schedule_interval(self.step_animation, 0.5)
 
     def step_animation(self, time_passed):
         self.show_overlap = not self.show_overlap
@@ -321,13 +332,13 @@ class BoardLayout(BoxLayout):
         return self.event is not None
 
 
-class CantStopLayout(BoxLayout):
-    phase = ObjectProperty(Phase.ROLL)
+class CantStopLayout(BoxLayout, Context):
+    phase = ObjectProperty(None)
     remaining_climbers = NumericProperty(CLIMBER_COUNT)
 
     def __init__(self, **kwargs):
         super(CantStopLayout, self).__init__(orientation='horizontal', **kwargs)
-        self.player = -1
+        self.player = None
         # Build Dices UI
         tools = BoxLayout(orientation='vertical', size_hint_x=0.15)
         self.dices = DiceLayout()
@@ -379,8 +390,37 @@ class CantStopLayout(BoxLayout):
         self.add_widget(panel)
         # Start game
         self.start_round()
+        self.phase = Phase.ROLL
+
+    def pre_select(self, pair, dices):
+        self.board.pre_select(pair[0])
+        self.dices.select(dices[0])
+        self.dices.select(dices[1])
+        if len(pair) > 1:
+            self.board.pre_select(pair[1])
+
+    def select(self, pair, dices):
+        consume_climber = self.board.select(pair[0])
+        if consume_climber:
+            self.remaining_climbers -= 1
+        self.dices.select(dices[0])
+        self.dices.select(dices[1])
+        if len(pair) > 1:
+            consume_climber = self.board.select(pair[1])
+            if consume_climber:
+                self.remaining_climbers -= 1
+        self.phase = Phase.CHOOSE
+
+    def print_label(self, text):
+        self.label.text = '[color=' + self.player.color + '][size=30]' + self.player.get_name() + '[/size][/color] ' + text
+        if self.label.parent is None:
+            self.buttons.add_widget(self.label)
+
+    def add_button(self, button):
+        self.buttons.add_widget(button)
 
     def on_ready(self, _, value):
+        self.board.un_select()
         if value:
             all_pairs = self.dices.get_all_pairs()
             selections = {}
@@ -405,72 +445,57 @@ class CantStopLayout(BoxLayout):
                         selections[(pair[1], )] = (dices[2], dices[3])
             self.buttons.clear_widgets()
             if len(selections) > 0:
-                for pair, dices in selections.items():
-                    sel = Button(text='[color=' + RESET_COLOR + '][size=30]' + str(pair) + '[/size][/color]', markup=True)
-                    sel.bind(on_press=self.make_selection_bind(pair, dices))
-                    self.buttons.add_widget(sel)
+                self.player.select(self, selections)
                 self.phase = Phase.SELECT
             else:
                 self.phase = Phase.FAILED
-        self.board.un_select()
-
-    def make_selection_bind(self, pair, dices):
-        def selection_bind(event):
-            consume_climber = self.board.select(pair[0])
-            if consume_climber:
-                self.remaining_climbers -= 1
-            self.dices.select(dices[0])
-            self.dices.select(dices[1])
-            if len(pair) > 1:
-                consume_climber = self.board.select(pair[1])
-                if consume_climber:
-                    self.remaining_climbers -= 1
-            self.phase = Phase.CHOOSE
-        return selection_bind
 
     def on_remaining_climbers(self, _, value):
         self.climbers.text = '[color=888888][size=50]' + str(value) + '[/size][/color]'
 
     def on_phase(self, _, value):
         if self.phase == Phase.ROLL:
-            self.label.text = '[color=ffd800][size=20]' + PLAYERS[self.player].get_name() + '[/size][/color]'
-            if not PLAYERS[self.player].human:
+            if self.player.human:
+                if self.play.parent is None:
+                    self.buttons.add_widget(self.play)
+                self.print_label('[color=ffd800][size=20]roll dices[/size][/color]')
+            else:
                 self.play_round(None)
         elif self.phase == Phase.ROLLING:
-            self.label.text = '[color=ffd800][size=20]Rolling[/size][/color]'
+            self.print_label('[color=ffd800][size=20]rolling[/size][/color]')
             self.play.disabled = True
-        elif self.phase == Phase.SELECT:
-            if not PLAYERS[self.player].human:
-                self.buttons.children[randint(0, len(self.buttons.children)-1)].trigger_action()
         elif self.phase == Phase.CHOOSE:
-            can_stop = False
-            self.buttons.clear_widgets()
-            self.buttons.add_widget(self.play)
-            if self.board.is_overlap():
-                self.label.text = "[color=ffd800][size=20]Can't Stop, overlap[/size][/color]"
-                self.buttons.add_widget(self.label)
-            else:
-                self.buttons.add_widget(self.stop)
-                can_stop = True
+            is_overlap = self.board.is_overlap()
+            remain_climber = self.remaining_climbers > 0
             self.play.disabled = False
-            if not PLAYERS[self.player].human:
-                (self.play if not can_stop or randint(0, 1) == 0 else self.stop).trigger_action()
+            self.buttons.clear_widgets()
+            if self.player.human:
+                self.buttons.add_widget(self.play)
+                if not remain_climber and not is_overlap:
+                    self.buttons.add_widget(self.stop)
+            else:
+                if not remain_climber and not is_overlap:
+                    self.player.choose(self)
+                else:
+                    self.play.trigger_action()
+            if remain_climber:
+                self.print_label("[color=ffd800][size=20]continue, some climbers left[/size][/color]")
+            elif is_overlap:
+                self.print_label("[color=ffd800][size=20]can't Stop, overlap[/size][/color]")
         elif self.phase == Phase.FAILED:
-            self.label.text = '[color=ffd800][size=20]FAILED!![/size][/color]'
-            self.buttons.add_widget(self.play)
-            self.buttons.add_widget(self.label)
+            self.print_label('[color=ffd800][size=20]has[/size] [/color][color=ff0000][size=20]FAILED[/size][/color]')
             self.play.disabled = True
-            Clock.schedule_once(self.fail_round, 1.)
+            Clock.schedule_once(self.fail_round, 2.)
 
     def start_round(self):
         self.remaining_climbers = CLIMBER_COUNT
-        self.player += 1
-        if self.player >= len(PLAYERS):
-            self.player = 0
-        self.board.player_id = PLAYERS[self.player].id
+        next_player_id = 1 if self.player is None else self.player.id + 1
+        if next_player_id > len(PLAYERS):
+            next_player_id = 1
+        self.player = PLAYERS[next_player_id - 1]
+        self.board.player_id = self.player.id
         for i, p in enumerate(self.player_labels):
-            p.select(self.player == i)
-        self.label.text = '[color=ffd800][size=20]' + PLAYERS[self.player].get_name() + '[/size][/color]'
+            p.select(self.player.id == i + 1)
 
     def play_round(self, event):
         self.phase = Phase.ROLLING
@@ -478,9 +503,7 @@ class CantStopLayout(BoxLayout):
 
     def stop_round(self, event):
         self.board.validate()
-        self.label.text = '[color=ffd800][size=20]Next Player[/size][/color]'
-        self.buttons.remove_widget(self.stop)
-        self.buttons.add_widget(self.label)
+        self.buttons.clear_widgets()
         self.start_round()
         self.phase = Phase.ROLL
 
